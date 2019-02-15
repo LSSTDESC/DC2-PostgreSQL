@@ -31,6 +31,7 @@ class Algo_ref_coord(algobase.Algo):
     ]
 
     def __init__(self, sourceTable):
+        # (Array) values of ra and dec
         ra  = sourceTable.fields.pop("coord_ra").data
         dec = sourceTable.fields.pop("coord_dec").data
 
@@ -136,7 +137,7 @@ def get_extinction(ra, dec):
     Get extinction E(B-V)
     @param ra
     @param dec
-        numpy.array of coordinates in *radians*
+        Both ra and dec are numpy.array of coordinates in *radians*
     @return
         numpy.array
     """

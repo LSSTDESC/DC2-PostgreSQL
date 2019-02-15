@@ -482,7 +482,9 @@ def drop_index_from_mastertable(rerunDir, schemaName, filters):
 
 def get_ref_schema_from_file(path):
     """
-    Get fields in a "ref-*.fits" file.
+    Get fields in a "ref-*.fits" file. Assign a list of algos (hence
+    fields handled by those algos) to each of the db tables to be
+    created
     @param path
         Path to a "ref-*.fits" file
     @return (dbtables, object_id, coord)
@@ -501,6 +503,8 @@ def get_ref_schema_from_file(path):
     # named 'object_id'
     object_id = table.cutout_subtable("id").fields["id"].data
 
+    # Form  PoppingOrderedDict from forced_algos.ref_algos, applying each
+    # algo to sourcetable obtained by reading fits file 
     algos = PoppingOrderedDict(
         (name, algoclass(table))
         for name, algoclass in lib.forced_algos.ref_algos.items()
@@ -520,6 +524,9 @@ def get_ref_schema_from_file(path):
         lib.misc.warning('Ignored field: ', field, 'in', path)
 
     dbtables = PoppingOrderedDict()
+
+    # This utility creates a dbtable and associates algos in the
+    # original full collection with it
     def add(name, sourcenames, 
             dbtable_class=lib.dbtable.DBTable_BandIndependent):
         dbtables[name] = dbtable_class(name, algos.pop_many(sourcenames))
@@ -574,6 +581,7 @@ class DBTable_Position(lib.dbtable.DBTable_BandIndependent):
     def set_dbconnection(self, dbconn):
         self.dbconn = dbconn
 
+    # The position table is special in that extra indexes are created for it
     def create_index(self, cursor, schemaName):
         lib.dbtable.DBTable_BandIndependent.create_index(self, cursor, schemaName)
         indexSpace = lib.config.get_index_space()

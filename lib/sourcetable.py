@@ -90,9 +90,6 @@ class SourceTable(object):
                 unit   = header.get("TUNIT{}".format(i), "")
                 doc    = header.get("TDOC{}" .format(i), "")
                 fields[name] = Field(name, type, unit, data[name], to_safe_doc(doc))
-                #if 'ConvolvedFlux_seeing' in str(name):
-                #    print('Found name ', str(name))
-
         if iFlag is not None:
             data = data["flags"]
             nFlags = int(re.match(r'^([0-9]+)X$', header["TFORM{}".format(iFlag)]).group(1))
