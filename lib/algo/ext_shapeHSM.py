@@ -24,9 +24,10 @@ class Algo_ext_shapeHSM(algobase.Algo):
             'ra' : 'ext_shapeHSM_{}_ra'.format(infix),
             'dec': 'ext_shapeHSM_{}_dec'.format(infix),
         }
-        for infix in ["HsmPsfMoments", "HsmSourceMoments", ]
-        # DC2 data has no fields ext_shapeHSM_HsmSourceMomentsRound*
-        #for infix in ["HsmPsfMoments", "HsmSourceMoments", "HsmSourceMomentsRound", ]
+        #for infix in ["HsmPsfMoments", "HsmSourceMoments", ]
+        # 1.1 DC2 data has no fields ext_shapeHSM_HsmSourceMomentsRound*
+        # 1.2 does
+        for infix in ["HsmPsfMoments", "HsmSourceMoments", "HsmSourceMomentsRound", ]
     ]
 
     shapes = [
@@ -40,9 +41,9 @@ class Algo_ext_shapeHSM(algobase.Algo):
             'ra' : 'ext_shapeHSM_{}_ra'.format(infix),
             'dec': 'ext_shapeHSM_{}_dec'.format(infix),
         }
-        for infix in ["HsmPsfMoments", "HsmSourceMoments", ]
-        # DC2 data has no fields ext_shapeHSM_HsmSourceMomentsRound*
-        #for infix in ["HsmPsfMoments", "HsmSourceMoments", "HsmSourceMomentsRound", ]
+        #for infix in ["HsmPsfMoments", "HsmSourceMoments", ]
+        # DC2 1.1 data has no fields ext_shapeHSM_HsmSourceMomentsRound*
+        for infix in ["HsmPsfMoments", "HsmSourceMoments", "HsmSourceMomentsRound", ]
     ]
 
     #fluxes = [
