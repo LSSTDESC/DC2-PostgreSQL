@@ -101,10 +101,12 @@ def make_ccdVisitId(visit, raft, sensor):
         combination.
     """
     # There are around 2.5 million visits in the 10 year survey, so 7
-    # digits should suffice for the visit part.  Prepend the RRSS
+    # digits should suffice for the visit part. 
+    # (jrb mod to use 8 digits, as is done in forced file name.)
+    #  Prepend the RRSS
     # combination to that and return as an int.
     #ccdVisitId = int(raft[:3:2] + sensor[:3:2] + "%07i" % visit)
-    ccdVisitId = int(raft[1:3] + sensor[1:3] + "%07i" % visit)
+    ccdVisitId = int(raft[1:3] + sensor[1:3] + "%08i" % visit)
     return ccdVisitId
 
 def create_table(connection, table_name, schema='public', sql_path='.',
