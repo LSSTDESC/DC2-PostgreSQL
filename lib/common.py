@@ -125,6 +125,25 @@ def new_db_connection():
     else:
         return libdb.DBConnectionDebug(psycopg2.connect(**config.dbServer))
 
+
+def db_table_exists(schema_name, table_name):
+    """
+    Return True or False accordingly
+    """
+
+    db = lib.common.new_db_connection()
+
+    ret = False
+    with db.cursor() as cursor:
+        try:
+            cursor.execute('SELECT 0 FROM "{schemaName}"."{table_name}" WHERE FALSE;'.format(**locals()))
+            ret = True
+        except psycopg2.ProgrammingError:
+            db.rollback()
+        finally:
+            db.close()
+    return ret
+
 # Not needed for LSST DC2 data.  Short names are always used.
 filterToShortName = collections.OrderedDict([
 #    ("HSC-G" , "g"    ),
