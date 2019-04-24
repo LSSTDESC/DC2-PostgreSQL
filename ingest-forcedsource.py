@@ -38,8 +38,12 @@ def main():
                         help="Directory from which to read data")
     parser.add_argument('schemaName', 
                         help="DB schema name in which to load data")
-    parser.add_argument("--table-name", default="forced_source", 
-                        help="Top-level table's name")
+    # Table name(s) specified in assumptions file.  Do we need an override?
+    #  Maybe something to specify name for dpdd view? Or maybe that belongs
+    # in native_to_dpdd.yaml and there should be an argument for that
+    # filepath
+    #parser.add_argument("--table-name", default="forced_source", 
+    #                    help="Top-level table's name")
     parser.add_argument("--db-server", metavar="key=value", nargs="+", 
                         action="append", 
                         help="DB connect parms. Must come after reqd args.")
@@ -68,30 +72,34 @@ def main():
     lib.config.tableSpace = ""
     lib.config.indexSpace = ""
 
-    assumptions = Assumptions(args.assumptions, args.schema)
+    assumptions = Assumptions(args.assumptions)
     if (args.create_keys):
-        create_keys(assumptions, args.dryrun)
+        create_keys(args.schema, assumptions, args.dryrun)
         exit(0)
     
     finder = ForcedSource_finder(args.rootdir)
 
-    something = create_table(finder, args.table_name,
-                             args.assumptions, args.dryrun)
+    something = create_table(args.schema, finder, args.assumptions, 
+                             args.dryrun)
 
-
-
-
-def create_keys(schema, assumptions='assumptions.yaml', dryrun=True):
+def create_keys(schema, assumptions, dryrun=True):
     """
     Suppose there is an assumptions-file-parsing class
     with methods to return table name(s) and generate
     sql for creating indexes, foreign keys
     assumptions = Assumptions(assumptions_file)
     """
-    if (not dryrun):
-        if not lib.common.db_table_exists(schema, table_name):
-            return False
+    # if (not dryrun):
+    #     #  Get table name list from Assumptions
+    #     for t in tables:
+    #     if not lib.common.db_table_exists(schema, t):
+    #         return False
+
     # Generate list of SQL commands for creating constraints
+    # This should be a service of Assumptions.  Pass in schema name
+    # Return a list of strings, each corresponding to one CREATE
+    # command.  Or maybe lump together all those belonging to the
+    # same table.  Decide what should be done in a single commit.
     if (dryrun):
         # print the list
         return True
@@ -102,9 +110,18 @@ def create_keys(schema, assumptions='assumptions.yaml', dryrun=True):
 
     return True
 
-def create_table(schema, finder, tbl='forced_source', 
-                 assumptions='assumptions.yaml', dryrun=True):
+def drop_keys(schema, assumptions):
+    # Assumptions routine, given schema name, should generate the SQL
+    pass
+
+def create_table(schema, finder, assumptions, dryrun=True):
     """
+    @param  schema       (Postgres) schema name
+    @param  finder       Instance of class which knows how to find schema 
+                         for input data and the data itself
+    @param  assumptions  Instance of class describing columns to be 
+                         included and excluded, among other things
+    @param  dryrun       If true only print out sql.  If false, execute 
     If dryrun is False and the table already exists, do nothing.
     Otherwise
     From information in the assumptions file plus information about
@@ -113,12 +130,70 @@ def create_table(schema, finder, tbl='forced_source',
     If dryrun just print it out.  Otherwise create the table.
     """
 
-    # Find a data file using the finder
+    # If not dryrun, check to see if table(s) already exists
+
+    # Find a data file path using the finder
+    afile = finder.get_some_file()
+
+    hdus = lib.fits.fits_open(afile)  
 
     #Read fields into a SourceTable via static method SourceTable.from_hdu
+    # Note this should be generalized in case there are several tables.
+    # That wouldn't be hard, but still wouldn't be adequate for object
+    # catalog, where input for each chunk comes from two different files
+    # Simplify a bit by insisting each table stores data from only
+    # one of the different files.  This is the case now for object catalog.
+    raw_table = lib.sourcetable.SourceTable.from_hdu(hdus[1])
 
+    #  Assumptions class applies its 'ignores' to cut it down to what we need
+    #  Maybe also subdivide into multiple tables if so described in yaml
+    #  Also add definitions for columns not obtained from raw read-in
+    remaining_table = assumptions.apply(raw_table)
 
-    # Using data from assumptions file, cut out all the 'ignores'
+    # Generate CREATE TABLE string from the fields in remaining_table
 
+    # Depending on value of dryrun, actually create or just print it out
 
-    #; finalize table schema; generate CREATE TABLE string
+def insert_visit(schema, finder, assumptions, visit, dryrun=True):
+    """
+    @param  schema       (Postgres) schema name
+    @param  finder       Instance of class which knows how to find schema 
+                         for input data and the data itself
+    @param  assumptions  Instance of class describing columns to be 
+                         included and excluded, among other things
+    @param  visit        integer visit number
+    @param  dryrun       If true only print out sql.  If false, insert
+                         data for the visit 
+    """
+    
+    # Find all data files belonging to the visit.   Many may be of
+    # the minimum size which indicates they have no data.  Make a
+    # list of the rest.   [This could all be done by the finder]
+
+    # Using first non-trivial data file, go through essentially same 
+    # procedure as for create_table to determine what columns we're 
+    # looking for, but this time read data as well as header
+    # Encapsulate computation of ccdVisitId in Assumptions.
+    # It appears that ccdvisitid is formed from
+    # decimal digits as follows
+    #             RRSSxxxxxxxx 
+    #  where RR is raft number, SS is sensor designation, and x's are
+    #  zero-filled representation of visit id.
+    #
+    #  Is it sufficient to chunk by visit?  Or should it be by raft, or
+    #  even by ccd?
+    #  Modify old bookkeeping scheme (where granularity was by patch)
+    #
+    # The guts of of the insert for object catalog is in 
+    # insert_patch_into_multibandtable.   It
+    #    * assembles a list of column names (called `fieldNames`) an 
+    #      arrays of column data (called `columns`) and generates format
+    #      string (called `format`).   This information all comes from
+    #      the dbtable, plus insertion of tab character between fields
+    #    * If multicore, use pipe_printf.   Write to a pipe, using zip
+    #      to output column-oriented inputs as rows:
+    #           for tpl in zip(*columns):
+    #               fout.write(format % tpl)
+    #       and meanwhile start copying from the pipe to db use copy_from
+    #    * otherwise write the whole thing to an in-memory byte stream,
+    #      then use copy_from on that.

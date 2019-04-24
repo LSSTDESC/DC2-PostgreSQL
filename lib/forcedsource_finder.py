@@ -1,7 +1,8 @@
 import re
 import os,sys
+from finderbase import Finder
 
-class ForcedSourceFinder(object):
+class ForcedSourceFinder(Finder):
     """
     Encapsulates information on file names and structure of file hierarchy
     containing forced source data.  That structure is:
@@ -52,7 +53,7 @@ class ForcedSourceFinder(object):
         # Convenience to avoid recalculating
         self.__subdirs = []
 
-    def getDeterminers(self) :
+    def get_determiners(self) :
         """
         Return a list of strings which are used as keyword arguments in
         subsequent 'get' routines in decreasing order of requiredness.
@@ -61,7 +62,7 @@ class ForcedSourceFinder(object):
         """
         return self.determiners
 
-    def getFilePath(self, visit, raft=None, ccd=None) :
+    def get_file_path(self, visit, raft=None, ccd=None) :
         """
         Depending on supplied arguments, return visit directory, visit/raft
         directory, or particular file for visit, raft, ccd
@@ -97,7 +98,7 @@ class ForcedSourceFinder(object):
 
         return None
 
-    def getSomeFile(self) :
+    def get_some_file(self) :
         """
            Call in case one just wants to determine the schema
         """
@@ -116,44 +117,49 @@ class ForcedSourceFinder(object):
                 
         return None
 
-    def getVisitFiles(self, visit, nonempty=True):
+    def get_visit_files(self, visit, nonempty=True):
         """
         Return a list of all data files belonging to a visit. If nonempty
         is true, exclude files which have empty data tables.
         """
-        visitdir = self.getFilePath(visit)
+        visitdir = self.get_file_path(visit)
         if visitdir is None: 
             return []
+        print('File path for visit ', visit, ' is: ', visitdir)
         files = []
         for d in os.listdir(visitdir):
             if re.fullmatch(self.raft_re, d):
                 rdir = os.path.join(visitdir, d)
+                print('Found raft dir ',rdir)
                 for f in os.listdir(rdir):
                     if re.fullmatch(self.basename_re, f):
+                        if nonempty:
+                            s = os.stat(os.path.join(rdir,f))
+                            if (s.st_size <= self.min_len) : continue
                         files.append(os.path.join(rdir, f))
         return files
 
 
 if __name__ == '__main__':
-    finder = ForcedSource_finder('/global/cscratch1/sd/desc/DC2/data/Run1.2p/w_2018_39/rerun/coadd-v4/forced')
+    finder = ForcedSourceFinder('/global/cscratch1/sd/desc/DC2/data/Run1.2p/w_2018_39/rerun/coadd-v4/forced')
 
-    aFile = finder.getSomeFile()
+    aFile = finder.get_some_file()
     if aFile is not None:
         print("Found file " + aFile)
 
     visit = 210472
-    visitdir = finder.getFilePath(visit)
+    visitdir = finder.get_file_path(visit)
     if visitdir is not None:
         print("Found visit dir: ", visitdir)
-        raftdir = finder.getFilePath(visit, raft='R01')
+        raftdir = finder.get_file_path(visit, raft='R01')
         if raftdir is not None:
             print("Found raft dir: ", raftdir)
-            f = finder.getFilePath(visit, raft='R01', ccd='S20')
+            f = finder.get_file_path(visit, raft='R01', ccd='S20')
             if f is not None:
                 print("Found file: ", f)
 
 
-    files = finder.getVisitFiles(visit)
+    files = finder.get_visit_files(visit)
     print("Found ", len(files), " files for visit ", visit)
     for f in files[:5]:
         print(f)

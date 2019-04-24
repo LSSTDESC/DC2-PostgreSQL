@@ -6,10 +6,9 @@ Assumptions may be represented in yaml as a dict with 3 keys: `symbols`,
 
 ignores
 -------
-Each element is either a regular expression or a list.  If a list, each
-entry in the child list is just a string, meant to be an exact match.
-All column names in the source data which match either one of the regular
-expressions or the simple strings should be discarded.
+Each element is a regular expression (which may be just a literal string).  
+For each column name in the source data, see if it is a full match for
+any of the expressions.  If so, discard it.
 
 symbols
 -------

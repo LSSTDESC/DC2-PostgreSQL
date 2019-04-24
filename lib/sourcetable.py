@@ -49,7 +49,7 @@ class SourceTable(object):
 
     def cutout_subtable(self, prefix):
         """
-        Cut out a subtable. Fiels that are cut are removed from the self.
+        Cut out a subtable. Fields that are cut are removed from the self.
         @param prefix (str)
             Fields whose keys start from this prefix will be cut out.
         @return (SourceTable)

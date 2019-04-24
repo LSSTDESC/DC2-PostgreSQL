@@ -16,15 +16,19 @@ symbols :
     allowed : [nil, schema, err, err]
     usage :  {index_by : dm_schema_version}
 ignores :
--  '^base_Circular.*'
--  '^base_Gaussian.*'
--  '^ext_photometry.*'
--  '^base_Transformed.*'
--  '^base_PsfFlux_apCorr.*'
--  '^base_PsfFlux_flag_apCorr.*'
--  ['parent', 'parentObjectId', 'deblend_nChild', 'coord_ra', 'coord_dec']
--  '^base_SdssCentroid.*'
--  '^base_SdssShape.*'
+-  'base_Circular.*'
+-  'base_Gaussian.*'
+-  'ext_photometry.*'
+-  'base_Transformed.*'
+-  'base_PsfFlux_apCorr.*'
+-  'base_PsfFlux_flag_apCorr.*'
+-  'parent'
+-  'parentObjectId' 
+-  'deblend_nChild'
+-  'coord_ra' 
+-  'coord_dec'
+-  'base_SdssCentroid.*'
+-  'base_SdssShape.*'
 
 tables :
 - table :
@@ -37,15 +41,17 @@ tables :
       - column :
           name : ccdVisitId
           dtype:  bigint
-          source : infilename # i.e. will be derived from data file name
+          #source : infilename # i.e. will be derived from data file name
+          compute : [concat_fields : decimal, raft: 2, sensor: 2, visit: 8]
+          doc : 'Identifies visit, ccd for associated data'
       - column_group :
-          name_re : '^base_PsfFlux_inst.*'
+          name_re : 'base_PsfFlux_inst.*'
           dtype : float
       - column_group :
-          name_re : '^base_PsfFlux_flag.*'
+          name_re : 'base_PsfFlux_flag.*'
           dtype : flag
       - column_group :
-          name_re : '^base_Pixel_flag.*'
+          name_re : 'base_Pixel_flag.*'
     constraints :
       - fk : {column : ccdVisitId, table : CcdVisit, refColumn : ccdVisitId}
       - fk : {column : objectId, table : position, refColumn : object_id}
