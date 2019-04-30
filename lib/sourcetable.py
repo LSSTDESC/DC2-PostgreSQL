@@ -89,14 +89,16 @@ class SourceTable(object):
                 type   = header.get("TCCLS{}".format(i), "")
                 unit   = header.get("TUNIT{}".format(i), "")
                 doc    = header.get("TDOC{}" .format(i), "")
-                fields[name] = Field(name, type, unit, data[name], to_safe_doc(doc))
+                fields[name] = Field(name, type, unit, data[name], 
+                                     to_safe_doc(doc), None)
         if iFlag is not None:
             data = data["flags"]
             nFlags = int(re.match(r'^([0-9]+)X$', header["TFORM{}".format(iFlag)]).group(1))
             for i in range(1, 1+nFlags):
                 name = header.get("TFLAG{}".format(i), "")
                 doc  = header.get("TFDOC{}".format(i), "")
-                fields[name] = Field(name, "Scalar", "", data[:,i-1], to_safe_doc(doc))
+                fields[name] = Field(name, "Scalar", "", data[:,i-1], 
+                                     to_safe_doc(doc), None)
 
         slots = {}
 
@@ -112,7 +114,8 @@ class SourceTable(object):
 
 
 class Field(collections.namedtuple("Field_",
-    ["name", "type", "unit", "data", "doc"]
+                                   ["name", "type", "unit", "data", 
+                                    "doc", "compute"]
 )):
     """
     A field in a table. This is a tuple of:
@@ -121,6 +124,7 @@ class Field(collections.namedtuple("Field_",
       * unit: Unit of the values
       * data: numpy.array
       * doc : Document text for this field.
+      * compute:  Normally None unless field is created from assumptions file
     """
 
     __slots__ = []
@@ -171,6 +175,8 @@ class Field(collections.namedtuple("Field_",
         """
         Get the type name of this field in SQL.
         """
+        #print('In get_sqltype column name is ', self.name)
+        #print('Class of data: ', type(self.data))        
         return Field.dtypesToSQLType[self.data.dtype.name]
 
     dtypesToSQLType = {
@@ -235,7 +241,8 @@ class Field(collections.namedtuple("Field_",
                     return [self.data]
             else:
                 return [ (float(x) for x in self.data[...,i]) for i in range(self.data.shape[-1]) ]
-
+    def get_compute(self):
+        return[self.compute]
 
 class Field_earth(Field):
     """

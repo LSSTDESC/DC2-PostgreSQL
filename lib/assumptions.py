@@ -4,6 +4,8 @@ import re
 from .misc import PoppingOrderedDict
 from .misc import warning
 from .sourcetable import Field
+from .dbimage import DbImage
+import numpy as np
 
 class Assumptions(object):
     """
@@ -57,7 +59,7 @@ class Assumptions(object):
                         raise TypeException("Table definition missing name field")
                     #for field in t_elt['table']:
                     #    print('key: ',str(field),' value: ', str(t_elt['table'][field]) )
-    def apply(raw, input_params, input_type=None):
+    def apply(self, raw, input_params={}, input_type=None):
         """
         @param raw           A SourceTable instance, typically read from hdu
         @param input_params  key-value pairs associated with the input
@@ -84,11 +86,12 @@ class Assumptions(object):
                         break;
                 if not matched: remaining[key] = f
 
-        #  The dict `remaining` now contains only fields we expect to use
+        #  The dict `remaining` now contains only fields we expect to use.
+        #  field name is used for dict key, as in SourceTable.fields
         fields = PoppingOrderedDict()
         table_name = self.parsed['tables'][0]['table']['name']
 
-        column_dicts, column_group_dicts = self._get_columns(0)
+        column_dicts, column_group_dicts = self._get_names(0)
 
         for key, f in remaining.items():
             # check each one matches a column name or column group in our table
@@ -110,25 +113,39 @@ class Assumptions(object):
                 print("Column ", key, " unknown to Assumptions file")
                 # and maybe raise exception?
 
+
         # If there are any entries left in column_dicts they better have
         # the compute attribute
         for d in column_dicts:
             if 'compute' in d:
-                field = Field(d['name'], d['dtype'], None, None, d['doc'])
-                field = {'name': d['name'], 'type' : d['dtype']}
+                dat = np.array([1], dtype=np.int64)
+
+                field = Field(d['name'], d['type'], None, dat, d['doc'], 
+                              d['compute'])
+                print('In apply. Compute column name: ', d['name'], 
+                      ' Class of data: ', type(field.data))
+                print('Class of data: ', type(dat))
+                # Also need to manufacture data field equal to something
+                # reasonable, and must have data.dtype.name set to
+                # value of d['dtype']
+                
                 fields[d['name']] = field
             else:
                 print("Field ", key, 
                       ", known to Assumptions, not found in input")
 
 
-        dbimage = DbImage(table_name, self, fields)
+        dbimage = DbImage(table_name, fields)
         dbimage.set_filters([""])
 
-        self.finals = PoppingOrderDict()    
+        # If we know about double precision fields which should stay
+        # double precision, this would be the place to call
+        # dbimage.append_doubles(list-of-names)
+
+        self.finals = PoppingOrderedDict()    
         self.finals[table_name] = dbimage
         
-                
+        return self.finals
         
     def _get_names(self, table_index):
         """
@@ -139,10 +156,10 @@ class Assumptions(object):
         column_names = []
         column_group_names = []
         for c in columns:
-            if 'column' in c :
-               column_names.append(c['name'])
-           else:
-               column_group_names.append(c['name'])
+            if c['column_type'] == 'column' :
+                column_names.append(c)
+            else:
+                column_group_names.append(c)
         return column_names, column_group_names
     def _get_ignores(self):
         if not self.parsed: self.parse()
@@ -151,11 +168,11 @@ class Assumptions(object):
         return None
 
     def _compile_ignores(self):
-        igs = self.get_ignores()
+        igs = self._get_ignores()
         if igs == None: return
         self.ignores = []
         for ig in igs:
-            self.append(re.compile(ig))
+            self.ignores.append(re.compile(ig))
 
     def get_tables(self):
         if not self.parsed: self.parse()

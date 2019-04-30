@@ -34,9 +34,9 @@ def main():
         fromfile_prefix_chars='@',
         description='Read a rerun directory to create "forced" summary table.')
 
-    parser.add_argument('forcedDir', dest='rootdir',
+    parser.add_argument('forceddir', 
                         help="Directory from which to read data")
-    parser.add_argument('schemaName', 
+    parser.add_argument('schemaname', 
                         help="DB schema name in which to load data")
     # Table name(s) specified in assumptions file.  Do we need an override?
     #  Maybe something to specify name for dpdd view? Or maybe that belongs
@@ -77,9 +77,9 @@ def main():
         create_keys(args.schema, assumptions, args.dryrun)
         exit(0)
     
-    finder = ForcedSource_finder(args.rootdir)
+    finder = ForcedSourceFinder(args.forceddir)
 
-    something = create_table(args.schema, finder, args.assumptions, 
+    something = create_table(args.schemaname, finder, assumptions, 
                              args.dryrun)
 
 def create_keys(schema, assumptions, dryrun=True):
@@ -133,7 +133,7 @@ def create_table(schema, finder, assumptions, dryrun=True):
     # If not dryrun, check to see if table(s) already exists
 
     # Find a data file path using the finder
-    afile = finder.get_some_file()
+    afile, determiners = finder.get_some_file()
 
     hdus = lib.fits.fits_open(afile)  
 
@@ -148,9 +148,13 @@ def create_table(schema, finder, assumptions, dryrun=True):
     #  Assumptions class applies its 'ignores' to cut it down to what we need
     #  Maybe also subdivide into multiple tables if so described in yaml
     #  Also add definitions for columns not obtained from raw read-in
-    remaining_table = assumptions.apply(raw_table)
+    remaining_tables = assumptions.apply(raw_table, input_params=determiners)
 
-    # Generate CREATE TABLE string from the fields in remaining_table
+    # Generate CREATE TABLE string for each table in remaining_tables from 
+    #the fields in the table (DbImage object)
+    for name in remaining_tables:
+        remaining_tables[name].transform()
+        remaining_tables[name].create(None, schema)
 
     # Depending on value of dryrun, actually create or just print it out
 
@@ -197,3 +201,6 @@ def insert_visit(schema, finder, assumptions, visit, dryrun=True):
     #       and meanwhile start copying from the pipe to db use copy_from
     #    * otherwise write the whole thing to an in-memory byte stream,
     #      then use copy_from on that.
+
+if __name__ == "__main__":
+    main()

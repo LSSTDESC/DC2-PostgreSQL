@@ -16,10 +16,11 @@
 # Adapted from dbtable.py
 from . import common
 from . import config
-from .assumptions import Assumptions
+#from .assumptions import Assumptions
 from .sourcetable import Field
+import numpy as np
 
-class DBImage(object):
+class DbImage(object):
     """
     This is a class that represents a table in the database.
     By default, the table is assumed to be multiband; in other words,
@@ -32,34 +33,32 @@ class DBImage(object):
     For forced source there only is one table and it's band-independent.
 
     DBTable is a list of algorithms (Algo's). Much of its functionality
-    is delegated to class Algo.   But probably won't do this for DBImage.
+    is delegated to class Algo.   But probably won't do this for DbImage.
     Almost all functionality of Algos is not needed
 
-    The only transformation DBImage needs to perform is to establish
+    The only transformation DbImage needs to perform is to establish
     which floating point fields should be single precision and which
-    double
+    double.
 
-    DBImage is responsible for:
+    DbImage is responsible for:
         * Generating SQL to creating table
         [* Creating/dropping indexes.  Or may do this elsewhere]
         * Preparing data to be inserted. 
            ** determine floating point precision
            ** add data for 'compute' columns
     """
-    __slots__ = ["name", "filters", "assumptions", "fields"]
+    __slots__ = ["name", "filters", "fields", "doubles"]
 
-    def __init__(self, name, assumptions, fields):
+    def __init__(self, name,  fields, doubles=[]):
         """
         @param  name     Table name
-        @param  assumptions The part of Assumptions concerning this table. 
-                It's a dict
         @param  fields    Dict mapping field name to a Field (named tuple)
         """
         self.name    = name
         self.filters = None
         self.fields = fields
-        # Save that part of Assumptions pertaining to this table
-        self.assumptions = assumptions
+        self.doubles = doubles  # list of names of fields preserving dbl prec.
+
 
     def set_filters(self, filters):
         """
@@ -72,58 +71,81 @@ class DBImage(object):
         filters = list(filters)
         self.filters = filters
 
-
-    def transform(self, rerunDir, tract, patch, filter, coord):
+    def append_doubles(field_names):
         """
-        Transform to the style in the DB the fields passed in on construction.
-        The parameters are additional information that can be used in the transformation.
-        @param rerunDir
-            Path to the rerun directory from which to generate the master table
-        @param tract
-            Tract number.
-        @param patch
-            Patch number (x*100 + y)
-        @param filter
-            Filter name
-        @param coord
-            {"ra": numpy.array, "dec": numpy.array}.
-            The angles are in degrees.
+        Saves names of fields which should not be converted from double
+        to single precision
+        @param   field_names     A list of field names
         """
-        #if 'position' in self.name:
-        #    print("# of algorithms: ", len(self.algos.values()))
-        for algo in self.algos.values():
-            #if 'position' in self.name:
-            #    print("Calling transform for alg ", str(algo))
-            #if  'ref_coord' in str(type(algo)):
-            #    print("Calling transform for ref_coord")
-            #    fields = algo.sourceTable.fields
-            #    print('about to transform ref_coord. Original stuff:')
-            #    for k in fields:  print(k, fields[k])
-            algo.transform(rerunDir, tract, patch, filter, coord)
-            #if  'ref_coord' in str(type(algo)):
-            #    print("Done calling transform for ref_coord")
-            #    fields = algo.sourceTable.fields
-            #    print('Done transforming ref_coord. New stuff:')
-            #    for k in fields:  print(k, fields[k])
+        self.doubles += field_names
 
-    def create(self, cursor, schemaName):
+    #def transform(self, rerunDir, tract, patch, filter, coord):
+    #     """
+    #     Transform to the style in the DB the fields passed in on construction.
+    #     The parameters are additional information that can be used in the transformation.
+    #     @param rerunDir
+    #         Path to the rerun directory from which to generate the master table
+    #     @param tract
+    #         Tract number.
+    #     @param patch
+    #         Patch number (x*100 + y)
+    #     @param filter
+    #         Filter name
+    #     @param coord
+    #         {"ra": numpy.array, "dec": numpy.array}.
+    #         The angles are in degrees.
+    #     """
+    def transform(self):
+        """
+        most of the arguments in the original dbtable version were there
+        to make it possible to find an image file, but we're not doing
+        that here.  The only thing this 'transform' does, at least
+        currently, is to figure out which fields should be changed to
+        single precision and which should stay double.
+        """
+
+        # In dbtable this function ended up being just the following:
+        #for algo in self.algos.values():
+        #    algo.transform(rerunDir, tract, patch, filter, coord)
+
+        # Here there are no intermediaries (algos).  We operate on
+        # fields directly.  And, for forced source, there is nothing
+        # which needs to be double because all position information is
+        # kept elsewhere.  
+        # 
+
+        for fname in self.fields:
+            f = self.fields[fname]
+            print('Field ', fname, ' has dtype ', f.data.dtype.name)
+            if f.data.dtype.name == "float64":
+                if f.name in self.doubles:
+                    pass
+                else:
+                    #convert to single  
+                    print("Converting field named ", f.name)
+                    self.fields[fname] = f._replace(data=f.data.astype(np.float32))
+        return
+
+            
+
+    def create(self, cursor, schema_name):
         """
         Create table in the database.
-        A primary key "object_id" will be included
-        in addition to the fields in the Algo's.
+
         @param cursor
             DB connection's cursor object
             If None don't actually write to db; just to stdout
         @param schemaName
-            Name of the schema in which to locate the master table
+            Name of the schema in which to locate the table
         """
-        ### members = ['object_id Bigint']
-
+        ### members = ['object_id Bigint']  Don't always have this
+        members = []
         for filter in self.filters:
             #filt = common.filterToShortName[filter] + "_" if filter else ""
             filt = filter + "_" if filter else ""
-            for algo in self.algos.values():
-                for name, type in algo.get_backend_fields(filt):
+            #for algo in self.algos.values():
+            #for name, type in algo.get_backend_fields(filt):
+            for name, type in self._get_backend_fields(filt):
                     members.append("{name}  {type}".format(**locals()))
 
         members = """,
@@ -132,7 +154,7 @@ class DBImage(object):
         tableSpace = config.get_table_space()
 
         create_string = """
-        CREATE TABLE "{schemaName}"."{self.name}" (
+        CREATE TABLE "{schema_name}"."{self.name}" (
             {members}
         )
         {tableSpace}
@@ -143,96 +165,109 @@ class DBImage(object):
         else:
             print(create_string)
 
-    def create_index(self, cursor, schemaName):
-        """
-        Create indexes on this table.
-        @param cursor
-            DB connection's cursor object
-        @param schemaName
-            Name of the schema in which to locate the master table
-        """
-        indexSpace = config.get_index_space()
+    def _get_backend_fields(self, prefix):
+        ret = []
+        for field in self.fields:
+            for f in self.fields[field].explode(): #  Doesn't do anything in our case
+                ret.append((prefix + f.name, f.get_sqltype()))
 
-        cursor.execute("""
-        CREATE UNIQUE INDEX
-            "{self.name}_pkey"
-        ON
-            "{schemaName}"."{self.name}" (object_id)
-        {indexSpace}
-        """.format(**locals())
-        )
-        cursor.execute("""
-        ALTER TABLE
-            "{schemaName}"."{self.name}"
-        ADD PRIMARY KEY USING INDEX
-          "{self.name}_pkey"
-        """.format(**locals())
-        )
+        # Compute fields will have been added in Assumptions.apply
+        return ret
 
-    def drop_index(self, cursor, schemaName):
-        """
-        Drop indexes from this table.
-        @param cursor
-            DB connection's cursor object
-        @param schemaName
-            Name of the schema in which to locate the master table
-        """
-        cursor.execute("""
-        ALTER TABLE
-            "{schemaName}"."{self.name}"
-        DROP CONSTRAINT IF EXISTS
-          "{self.name}_pkey"
-        """.format(**locals())
-        )
-        cursor.execute("""
-        ALTER TABLE
-            "{schemaName}"."{self.name}"
-        ALTER COLUMN
-            object_id
-        DROP NOT NULL
-        """.format(**locals())
-        )
+    # def create_index(self, cursor, schemaName):
+    #     """
+    #     Create indexes on this table.
+    #     @param cursor
+    #         DB connection's cursor object
+    #     @param schemaName
+    #         Name of the schema in which to locate the master table
+    #     """
+    #     indexSpace = config.get_index_space()
 
-    def get_backend_field_data(self, filter):
-        """
-        Get field data for the backend table.
-        @param filter (str)
-            Filter name.
-        @return list of (fieldname, printf_format, [column]).
-            'column' is a numpy.array. An example of the return value is:
-            ("i_point", "(%.16e,%.16e)", [x, y]),
-            in which x and y are numpy.array.
-        """
-        filt = common.filterToShortName[filter] + "_" if filter else ""
-        members = []
+    #     cursor.execute("""
+    #     CREATE UNIQUE INDEX
+    #         "{self.name}_pkey"
+    #     ON
+    #         "{schemaName}"."{self.name}" (object_id)
+    #     {indexSpace}
+    #     """.format(**locals())
+    #     )
+    #     cursor.execute("""
+    #     ALTER TABLE
+    #         "{schemaName}"."{self.name}"
+    #     ADD PRIMARY KEY USING INDEX
+    #       "{self.name}_pkey"
+    #     """.format(**locals())
+    #     )
 
-        for algo in self.algos.values():
-            members += algo.get_backend_field_data(filt)
+    # def drop_index(self, cursor, schemaName):
+    #     """
+    #     Drop indexes from this table.
+    #     @param cursor
+    #         DB connection's cursor object
+    #     @param schemaName
+    #         Name of the schema in which to locate the master table
+    #     """
+    #     cursor.execute("""
+    #     ALTER TABLE
+    #         "{schemaName}"."{self.name}"
+    #     DROP CONSTRAINT IF EXISTS
+    #       "{self.name}_pkey"
+    #     """.format(**locals())
+    #     )
+    #     cursor.execute("""
+    #     ALTER TABLE
+    #         "{schemaName}"."{self.name}"
+    #     ALTER COLUMN
+    #         object_id
+    #     DROP NOT NULL
+    #     """.format(**locals())
+    #     )
 
-        return members
+    # Write a version of this analogous to _get_backend_fields above,
+    # adapted from Algo.get_backend_field_data
+    #
+    # def get_backend_field_data(self, filter):
+    #     """
+    #     Get field data for the backend table.
+    #     @param filter (str)
+    #         Filter name.
+    #     @return list of (fieldname, printf_format, [column]).
+    #         'column' is a numpy.array. An example of the return value is:
+    #         ("i_point", "(%.16e,%.16e)", [x, y]),
+    #         in which x and y are numpy.array.
+    #     """
+    #     filt = common.filterToShortName[filter] + "_" if filter else ""
+    #     members = []
 
+    #     for algo in self.algos.values():
+    #         members += algo.get_backend_field_data(filt)
 
-    def get_exported_fields(self, filter):
-        """
-        Get field data for the frontend view.
-        @param filter (str)
-            Filter name.
-        @return list of (fieldname, definition, unit, document).
-            Each field can be exported as:
-                {definition} AS {fieldname}.
-        """
-        filt = common.filterToShortName[filter] + "_" if filter else ""
-        members = []
-
-        for algo in self.algos.values():
-            members += algo.get_frontend_fields(filt)
-
-        return members
+    #     return members
 
 
-class DBImage_BandIndependent(DBImage):
+    #   Likely won't need this at all
+    # def get_exported_fields(self, filter):
+    #     """
+    #     Get field data for the frontend view.
+    #     @param filter (str)
+    #         Filter name.
+    #     @return list of (fieldname, definition, unit, document).
+    #         Each field can be exported as:
+    #             {definition} AS {fieldname}.
+    #     """
+    #     filt = common.filterToShortName[filter] + "_" if filter else ""
+    #     members = []
+
+    #     for algo in self.algos.values():
+    #         members += algo.get_frontend_fields(filt)
+
+    #     return members
+
+
+class DbImage_BandIndependent(DbImage):
     """
-    Band-independent variant of class DBImage.
+    Band-independent variant of class DbImage.
     Fields in this table are independent of bands:
     they, the same values, are shared by all bands.
     """
@@ -242,6 +277,6 @@ class DBImage_BandIndependent(DBImage):
         filters = self.filters
         self.filters = [""]
         try:
-            return DBImage.create(self, cursor, schemaName)
+            return DbImage.create(self, cursor, schemaName)
         finally:
             self.filters = filters
