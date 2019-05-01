@@ -148,7 +148,7 @@ def create_table(schema, finder, assumptions, dryrun=True):
     #  Assumptions class applies its 'ignores' to cut it down to what we need
     #  Maybe also subdivide into multiple tables if so described in yaml
     #  Also add definitions for columns not obtained from raw read-in
-    remaining_tables = assumptions.apply(raw_table, input_params=determiners)
+    remaining_tables = assumptions.apply(raw_table, **determiners)
 
     # Generate CREATE TABLE string for each table in remaining_tables from 
     #the fields in the table (DbImage object)

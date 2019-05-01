@@ -41,13 +41,15 @@ tables :
       - column_type : column
         name : objectId
         type : Scalar
-        dtype: uint64            # was biging
+        dtype: uint64            # was bigint
       - column_type : column
         name : ccdVisitId
         type : Scalar
-        dtype:  uint64
+        dtype:  int64
         #source : infilename # i.e. will be derived from data file name
-        compute : [concat_fields : decimal, raft: 2, sensor: 2, visit: 8]
+        #compute : [concat_fields : decimal, raft: 2, sensor: 2, visit: 8]
+        compute : ['{visit}', 8, 'zerofill(,)', '{sensor}', 2, 'zerofill(,)', 
+                   'prepend(,)', '{raft}', 1, 'zerofill(,)', 'prepend(,)']
         doc : 'Identifies visit, ccd for associated data'
       - column_type : column_group
         name_re : 'base_PsfFlux_inst.*'

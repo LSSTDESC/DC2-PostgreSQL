@@ -5,6 +5,7 @@ from .misc import PoppingOrderedDict
 from .misc import warning
 from .sourcetable import Field
 from .dbimage import DbImage
+from .expressions import rpn_eval
 import numpy as np
 
 class Assumptions(object):
@@ -59,21 +60,33 @@ class Assumptions(object):
                         raise TypeException("Table definition missing name field")
                     #for field in t_elt['table']:
                     #    print('key: ',str(field),' value: ', str(t_elt['table'][field]) )
-    def apply(self, raw, input_params={}, input_type=None):
+    def apply(self, raw,  **kw):
         """
         @param raw           A SourceTable instance, typically read from hdu
-        @param input_params  key-value pairs associated with the input
-        @param input_type    If more than one type of input file is read in for
-                             ingest, indicate which type it is. If used should 
-                             match value of 'source' keyword for one or more 
-                             tables described in Assumptions instance
+        @param  kw           Key-value pairs which may be assoc. with input,
+                             e.g. visit, raft and sensor
         @return              dict of DbImages, 
                              obtained by applying operations as described in
                              our assumptions.
                              For now only handle case where everything
                              goes in a single DbImage
-        
+
+        The following was just merged into kw
+        @param input_type    If more than one type of input file is read in for
+                             ingest, indicate which type it is. If used should 
+                             match value of 'source' keyword for one or more 
+                             tables described in Assumptions instance
+
         """
+        for k in kw:
+            print('key is ', k, ' value is ', kw[k])
+        # if 'visit' in kw:
+        #     visit = kw['visit']
+        # if 'raft' in kw:
+        #     raft = kw['raft']
+        # if 'sensor' in kw:
+        #     sensor = kw['sensor']
+
         # apply ignores
         self._compile_ignores()
         if self.ignores != None:
@@ -86,8 +99,16 @@ class Assumptions(object):
                         break;
                 if not matched: remaining[key] = f
 
+
+
         #  The dict `remaining` now contains only fields we expect to use.
         #  field name is used for dict key, as in SourceTable.fields
+
+        #  Compute data length from the first field, needed for compute fields
+        for k in remaining:
+            data_len = len(remaining[k].data)
+            break
+
         fields = PoppingOrderedDict()
         table_name = self.parsed['tables'][0]['table']['name']
 
@@ -118,7 +139,22 @@ class Assumptions(object):
         # the compute attribute
         for d in column_dicts:
             if 'compute' in d:
-                dat = np.array([1], dtype=np.int64)
+                c_list = d['compute']
+                for i in range(len(c_list)):
+                    c_list[i] = str(c_list[i]).format(**kw)
+                    print('Element ', i, ' is ', c_list[i])
+
+                s_val = rpn_eval([], c_list)
+                print('computed value ', s_val)
+                val = s_val
+                if 'int' in d['dtype']: 
+                    val = int(s_val)
+                    print('int val ', val)
+                if 'float' in d['dtype']: 
+                    val = int(s_val)
+                    print('float val ', val)
+                dat = np.full([data_len], int(val), np.int64)
+
 
                 field = Field(d['name'], d['type'], None, dat, d['doc'], 
                               d['compute'])
@@ -128,7 +164,7 @@ class Assumptions(object):
                 # Also need to manufacture data field equal to something
                 # reasonable, and must have data.dtype.name set to
                 # value of d['dtype']
-                
+
                 fields[d['name']] = field
             else:
                 print("Field ", key, 

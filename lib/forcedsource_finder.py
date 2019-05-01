@@ -1,6 +1,6 @@
 import re
 import os,sys
-from finderbase import Finder
+from .finderbase import Finder
 
 class ForcedSourceFinder(Finder):
     """
@@ -33,11 +33,11 @@ class ForcedSourceFinder(Finder):
         self.dm_version = ""
 
         self.filters = ['u', 'g', 'r', 'i', 'y', 'z' ]
-        self.visit_re = '[0-9]{8}'
+        self.visit_re = '([0-9]{8})'
         filter_string = ''.join(self.filters)
         self.visitdir_re = self.visit_re + '-[' + filter_string + ']'
-        self.raft_re = 'R[0-4]{2}'
-        self.ccd_re = 'S[0-2]{2}'
+        self.raft_re = 'R([0-4]{2})'
+        self.ccd_re = 'S([0-2]{2})'
         self.basename_re = '-'.join(['forced_' + self.visitdir_re, self.raft_re,
                                      self.ccd_re, 'det[0-9]{3}.fits'])
 
@@ -45,7 +45,7 @@ class ForcedSourceFinder(Finder):
         self.basename_fmt = '-'.join(['forced_{}','{}','{}'])
         self.dirs = [self.visitdir_re, self.raft_re]
 
-        self.determiners = ['visit', 'raft', 'ccd']
+        self.determiners = ['visit', 'raft', 'sensor']
 
         # Files of this length have no data
         self.min_len = min_len
@@ -101,19 +101,30 @@ class ForcedSourceFinder(Finder):
     def get_some_file(self) :
         """
            Call in case one just wants to determine the schema
+           returns:   file path and dict of determiners
         """
+
         if len(self.__subdirs) == 0:
             self.__subdirs = os.listdir(self.rootdir)
         for v in self.__subdirs:
+            visit = v[:-2]    # strip off filter
             visit_dir = os.path.join(self.rootdir, v)
             rdirs = os.listdir(visit_dir)
             for r in rdirs:
                 if re.fullmatch(self.raft_re, r):
+                    raft = r[1:]
                     fs = os.listdir(os.path.join(visit_dir, r))
                     for f in fs:
                         #print('Found a file ', f)
-                        if re.fullmatch(self.basename_re, f):
-                            return os.path.join(visit_dir, r, f)
+                        m = re.fullmatch(self.basename_re, f)
+                        if m:
+                            d = {'visit' : m.group(1),
+                                 'raft' : m.group(2),
+                                 'sensor' : m.group(3)}
+                            #print('Visit: ', m.group(1))
+                            #print('Raft: ', m.group(2))
+                            #print('CCD: ', m.group(3))
+                            return os.path.join(visit_dir, r, f), d
                 
         return None
 
