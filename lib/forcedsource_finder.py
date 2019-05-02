@@ -62,19 +62,33 @@ class ForcedSourceFinder(Finder):
         """
         return self.determiners
 
+    def get_determiner_dict(self, filepath):
+        """
+        @param  forced source input file
+        @return dict of determiner values for specified file
+        """
+        fbase = os.path.basename(filepath)
+        m = re.fullmatch(self.basename_re, fbase)
+        if m:
+            d = {'visit' : m.group(1),
+                 'raft' : m.group(2),
+                 'sensor' : m.group(3)}
+            return d
+        raise ValueError('get_determiner_dict: bad filepath argument ' + filepath)
+
     def get_file_path(self, visit, raft=None, ccd=None) :
         """
         Depending on supplied arguments, return visit directory, visit/raft
         directory, or particular file for visit, raft, ccd
         """
         if (type(visit) != type(3) ):
-            raise TypeError("getFilePath: bad visit argument: " + str(visit) )
+            raise TypeError("get_file_path: bad visit argument: " + str(visit) )
         if raft is not None:
             if re.fullmatch(self.raft_re, raft) is None:
-                raise ValueError("getFilePath: bad raft argument: " + str(raft))
+                raise ValueError("get_file_path: bad raft argument: " + str(raft))
             if ccd is not None:
                 if re.fullmatch(self.ccd_re, ccd) is None:
-                    raise ValueError("getFilePath: bad ccd argument: " + str(ccd))
+                    raise ValueError("get_file_path: bad ccd argument: " + str(ccd))
         visitstr = '{:08}'.format(visit)
         if len(self.__subdirs) == 0:
             self.__subdirs = os.listdir(self.rootdir)
@@ -121,9 +135,6 @@ class ForcedSourceFinder(Finder):
                             d = {'visit' : m.group(1),
                                  'raft' : m.group(2),
                                  'sensor' : m.group(3)}
-                            #print('Visit: ', m.group(1))
-                            #print('Raft: ', m.group(2))
-                            #print('CCD: ', m.group(3))
                             return os.path.join(visit_dir, r, f), d
                 
         return None

@@ -20,6 +20,13 @@ class Finder(object):
 
         return None
 
+    def get_determiner_dict(self, filepath):
+        """
+        @param  input data file
+        @return dict of determiner values for specified file
+        """
+        return None
+
     def get_some_file(self):
         """
         Return file path to a 'typical' input file, from which data schema

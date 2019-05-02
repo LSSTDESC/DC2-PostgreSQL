@@ -60,20 +60,5 @@ tables :
 
       
 #  Somewhere there also needs to be config information for the structure
-#  of infilename.   
-#  A typical one for forced source is
-#   forced_01198591-z-R10-S11-det031.fits, i.e.
-#   forced_<visitid>-<filter>-<raftname>-<detectorName>-det<det#>.fits
-# re for this could be 
-# 'forced_([0-9]{8})-([ugriyz])-(R[0-9]{2})-(S[0-2]{2})-det[0-9]{3}.fits'
-# Then the value of the matched groups are, in order,
-# visit id, filter, raft name, and detector name. Or use group names:
-# 'forced_(?P<visit>[0-9]{8})-(?P<filter>[ugriyz])-(?P<raft>R[0-9]{2})-(?P<det>S[0-2]{2})-det[0-9]{3}.fits'
-# Then use re.fullmatch(pat, fname)
-# Or don't bother defining in full detail beyond the last group, e.g.
-#  'forced_(?P<visit>[0-9]{8})-(?P<filter>[ugriyz])-(?P<raft>R[0-9]{2})-(?P<det>S[0-2]{2}).*fits'
-# or even
-# 'forced_(?P<visit>[0-9]{8})-(?P<filter>[ugriyz])-(?P<raft>R[0-9]{2})-(?P<det>S[0-2]{2})'
-# and use re.match(pat,fname)
-# Jim's visit ingest code is expecting no more than 7, which is ok for
-# 1.2p v4.  I've changed it to 8 to match template for infile names
+#  of infilename.   I've put it in the forced-source-specific finder
+#  class ForcedSourceFinder  
