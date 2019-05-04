@@ -116,13 +116,13 @@ class DbImage(object):
 
         for fname in self.fields:
             f = self.fields[fname]
-            print('Field ', fname, ' has dtype ', f.data.dtype.name)
+            #print('Field ', fname, ' has dtype ', f.data.dtype.name)
             if f.data.dtype.name == "float64":
                 if f.name in self.doubles:
                     pass
                 else:
                     #convert to single  
-                    print("Converting field named ", f.name)
+                    #print("Converting field named ", f.name)
                     self.fields[fname] = f._replace(data=f.data.astype(np.float32))
         return
 
@@ -167,8 +167,8 @@ class DbImage(object):
 
     def _get_backend_fields(self, prefix):
         ret = []
-        for field in self.fields:
-            for f in self.fields[field].explode(): #  Doesn't do anything in our case
+        for field in self.fields.values():
+            for f in field.explode(): #  Doesn't do anything in our case
                 ret.append((prefix + f.name, f.get_sqltype()))
 
         # Compute fields will have been added in Assumptions.apply
@@ -227,24 +227,23 @@ class DbImage(object):
     # Write a version of this analogous to _get_backend_fields above,
     # adapted from Algo.get_backend_field_data
     #
-    # def get_backend_field_data(self, filter):
-    #     """
-    #     Get field data for the backend table.
-    #     @param filter (str)
-    #         Filter name.
-    #     @return list of (fieldname, printf_format, [column]).
-    #         'column' is a numpy.array. An example of the return value is:
-    #         ("i_point", "(%.16e,%.16e)", [x, y]),
-    #         in which x and y are numpy.array.
-    #     """
-    #     filt = common.filterToShortName[filter] + "_" if filter else ""
-    #     members = []
+    def get_backend_field_data(self, prefix):
+        """
+        Get field data for the backend table.
+        @param prefix (str)
+            prepend to column name  for multiband
+        @return list of (fieldname, printf_format, [column]).
+            'column' is a numpy.array. An example of the return value is:
+            ("i_point", "(%.16e,%.16e)", [x, y]),
+            in which x and y are numpy.array.
+        """
 
-    #     for algo in self.algos.values():
-    #         members += algo.get_backend_field_data(filt)
-
-    #     return members
-
+        members = []
+        for field in self.fields.values():
+            for f in field.explode():
+                members.append((prefix + f.name, f.get_print_format(),
+                                f.get_columns()))
+        return members
 
     #   Likely won't need this at all
     # def get_exported_fields(self, filter):

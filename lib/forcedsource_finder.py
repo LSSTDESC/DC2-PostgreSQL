@@ -33,6 +33,7 @@ class ForcedSourceFinder(Finder):
         self.dm_version = ""
 
         self.filters = ['u', 'g', 'r', 'i', 'y', 'z' ]
+        #self.visit_width = 8    # should use this instead of hard-coding
         self.visit_re = '([0-9]{8})'
         filter_string = ''.join(self.filters)
         self.visitdir_re = self.visit_re + '-[' + filter_string + ']'
@@ -68,11 +69,13 @@ class ForcedSourceFinder(Finder):
         @return dict of determiner values for specified file
         """
         fbase = os.path.basename(filepath)
+        print('get_determiner_dict:  basename ', fbase)
         m = re.fullmatch(self.basename_re, fbase)
         if m:
             d = {'visit' : m.group(1),
                  'raft' : m.group(2),
                  'sensor' : m.group(3)}
+            print('Found visit ', d['visit'])
             return d
         raise ValueError('get_determiner_dict: bad filepath argument ' + filepath)
 

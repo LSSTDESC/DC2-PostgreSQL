@@ -78,14 +78,9 @@ class Assumptions(object):
                              tables described in Assumptions instance
 
         """
+        print('assumptions.apply kw arguments: ')
         for k in kw:
             print('key is ', k, ' value is ', kw[k])
-        # if 'visit' in kw:
-        #     visit = kw['visit']
-        # if 'raft' in kw:
-        #     raft = kw['raft']
-        # if 'sensor' in kw:
-        #     sensor = kw['sensor']
 
         # apply ignores
         self._compile_ignores()
@@ -140,31 +135,27 @@ class Assumptions(object):
         for d in column_dicts:
             if 'compute' in d:
                 c_list = d['compute']
+                cf_list = []
                 for i in range(len(c_list)):
-                    c_list[i] = str(c_list[i]).format(**kw)
-                    print('Element ', i, ' is ', c_list[i])
+                    cf_list.append(str(c_list[i]).format(**kw))
+                    #print('Element ', i, ' is ', cf_list[i])
 
-                s_val = rpn_eval([], c_list)
+                s_val = rpn_eval([], cf_list)
                 print('computed value ', s_val)
                 val = s_val
                 if 'int' in d['dtype']: 
                     val = int(s_val)
-                    print('int val ', val)
+                    #print('int val ', val)
                 if 'float' in d['dtype']: 
                     val = int(s_val)
-                    print('float val ', val)
+                    #print('float val ', val)
                 dat = np.full([data_len], int(val), np.int64)
 
 
                 field = Field(d['name'], d['type'], None, dat, d['doc'], 
                               d['compute'])
-                print('In apply. Compute column name: ', d['name'], 
-                      ' Class of data: ', type(field.data))
-                print('Class of data: ', type(dat))
-                # Also need to manufacture data field equal to something
-                # reasonable, and must have data.dtype.name set to
-                # value of d['dtype']
-
+                # print('In apply. Compute column name: ', d['name'], 
+                #      ' Class of data: ', type(field.data))
                 fields[d['name']] = field
             else:
                 print("Field ", key, 

@@ -22,7 +22,7 @@ def rpn_to_expression(inputs, rpn):
     # funcpat = re.compile('([a-zA-Z_]+[:a-zA-Z0-9_.]*)\(\)$')
     # func2pat = re.compile('([a-zA-Z_]+[:a-zA-Z0-9_.]*)\(,\)$')
     for elt in rpn:
-        #print("found elt {} of type {}".format(elt, type(elt)))
+        print("found elt {} of type {}".format(elt, type(elt)))
         try:
             s = float(elt)
             argstack.append(str(elt))

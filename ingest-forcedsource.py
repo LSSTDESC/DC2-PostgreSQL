@@ -29,6 +29,7 @@ import textwrap
 def main():
     import argparse
     cmdline = ' '.join(sys.argv)
+    print('Invocation: ' + cmdline)
 
     parser = argparse.ArgumentParser(
         fromfile_prefix_chars='@',
@@ -42,8 +43,6 @@ def main():
     #  Maybe something to specify name for dpdd view? Or maybe that belongs
     # in native_to_dpdd.yaml and there should be an argument for that
     # filepath
-    #parser.add_argument("--table-name", default="forced_source", 
-    #                    help="Top-level table's name")
     parser.add_argument("--db-server", metavar="key=value", nargs="+", 
                         action="append", 
                         help="DB connect parms. Must come after reqd args.")
@@ -57,7 +56,7 @@ def main():
                         help="Just create tables and views; no inserts", 
                         default=False)
     parser.add_argument('--visits', dest='visits', type=int, nargs='+', 
-                        help="Ingest data for specified tracts only if present. Else ingest all")
+                        help="Ingest data for specified visits only if present. Else ingest all")
     parser.add_argument('--assumptions', default='forced_source_assumptions.yaml', help="Path to description of prior assumptions about data schema")
 
     args = parser.parse_args()
@@ -81,6 +80,12 @@ def main():
 
     something = create_table(args.schemaname, finder, assumptions, 
                              args.dryrun)
+
+
+    if args.no_insert: return
+
+    for v in args.visits:
+        insert_visit(args.schemaname, finder, assumptions, v, args.dryrun)
 
 def create_keys(schema, assumptions, dryrun=True):
     """
@@ -122,6 +127,7 @@ def create_table(schema, finder, assumptions, dryrun=True):
     @param  assumptions  Instance of class describing columns to be 
                          included and excluded, among other things
     @param  dryrun       If true only print out sql.  If false, execute 
+    @returns             False if not dryrun and table exists; else True
     If dryrun is False and the table already exists, do nothing.
     Otherwise
     From information in the assumptions file plus information about
@@ -131,7 +137,27 @@ def create_table(schema, finder, assumptions, dryrun=True):
     """
 
     # If not dryrun, check to see if table(s) already exists
+    bNeedCreating = False
 
+    db = lib.common.new_db_connection()
+
+    create_schema_string = 'CREATE SCHEMA IF NOT EXISTS "{schema}"'.format(**locals())
+
+    if not dryrun:
+        aTable = assumptions.get_tables()[0]
+
+        with db.cursor() as cursor:
+            try:
+                cursor.execute('SELECT 0 FROM "{schema}"."{aTable}" WHERE FALSE;'.format(**locals()))
+                return False
+            except psycopg2.ProgrammingError:
+                bNeedCreating = True
+                db.rollback()
+
+    if bNeedCreating:
+        with db.cursor() as cursor:
+            cursor.execute(create_schema_string)
+        db.commit()
     # Find a data file path using the finder
     afile, determiners = finder.get_some_file()
 
@@ -152,11 +178,15 @@ def create_table(schema, finder, assumptions, dryrun=True):
 
     # Generate CREATE TABLE string for each table in remaining_tables from 
     #the fields in the table (DbImage object)
-    for name in remaining_tables:
-        remaining_tables[name].transform()
-        remaining_tables[name].create(None, schema)
-
-    # Depending on value of dryrun, actually create or just print it out
+    with db.cursor() as cursor:
+        for name in remaining_tables:
+            remaining_tables[name].transform()
+            if dryrun:
+                remaining_tables[name].create(None, schema)
+            else:
+                remaining_tables[name].create(cursor, schema)
+    if not dryrun: db.commit()
+    return True
 
 def insert_visit(schema, finder, assumptions, visit, dryrun=True):
     """
@@ -169,38 +199,154 @@ def insert_visit(schema, finder, assumptions, visit, dryrun=True):
     @param  dryrun       If true only print out sql.  If false, insert
                          data for the visit 
     """
-    
+
     # Find all data files belonging to the visit.   Many may be of
     # the minimum size which indicates they have no data.  Make a
-    # list of the rest.   [This could all be done by the finder]
+    # list of the rest.
+    visit_files = finder.get_visit_files(visit) 
 
-    # Using first non-trivial data file, go through essentially same 
-    # procedure as for create_table to determine what columns we're 
-    # looking for, but this time read data as well as header
-    # Encapsulate computation of ccdVisitId in Assumptions.
-    # It appears that ccdvisitid is formed from
-    # decimal digits as follows
-    #             RRSSxxxxxxxx 
-    #  where RR is raft number, SS is sensor designation, and x's are
-    #  zero-filled representation of visit id.
-    #
-    #  Is it sufficient to chunk by visit?  Or should it be by raft, or
-    #  even by ccd?
-    #  Modify old bookkeeping scheme (where granularity was by patch)
-    #
-    # The guts of of the insert for object catalog is in 
-    # insert_patch_into_multibandtable.   It
-    #    * assembles a list of column names (called `fieldNames`) an 
-    #      arrays of column data (called `columns`) and generates format
-    #      string (called `format`).   This information all comes from
-    #      the dbtable, plus insertion of tab character between fields
-    #    * If multicore, use pipe_printf.   Write to a pipe, using zip
-    #      to output column-oriented inputs as rows:
-    #           for tpl in zip(*columns):
-    #               fout.write(format % tpl)
-    #       and meanwhile start copying from the pipe to db use copy_from
-    #    * otherwise write the whole thing to an in-memory byte stream,
-    #      then use copy_from on that.
+    use_cursor = None
+    db = lib.common.new_db_connection()
+    with db.cursor() as cursor:
+        if not dryrun:
+            use_cursor = cursor
+
+        print('using cursor ', str(use_cursor))
+        ifile = 0             #   DEBUG
+        for vf in visit_files:
+            ifile += 1           # DEBUG
+            if dryrun and  ifile > 3: return
+            determiners = finder.get_determiner_dict(vf)
+
+            # Call routine which looks in temp table (creating if need be)
+            # to see if this bit of data has already been processed
+            # Includes cursor argument.  If it is None, routine is no-op
+
+            # Go through essentially same 
+            # procedure as for create_table to determine what columns we're 
+            # looking for and store the column data
+            #
+            hdus = lib.fits.fits_open(vf)  
+
+            #Read fields into a SourceTable
+            raw_table = lib.sourcetable.SourceTable.from_hdu(hdus[1])
+
+            #  Assumptions class applies 'ignores' to cut it down to what we need
+            #  Maybe also subdivide into multiple tables if so described in yaml
+            remaining_tables = assumptions.apply(raw_table, **determiners)
+
+            for name in remaining_tables:
+                remaining_tables[name].transform()
+                insert_bit(use_cursor, schema, remaining_tables[name],
+                           **determiners)
+
+            #  Is it sufficient to chunk by visit?  Or should it be by raft, or
+            #  even by ccd?
+            #  Modify old bookkeeping scheme (where granularity was by patch)
+            #
+            # The guts of of the insert for object catalog is in 
+            # insert_patch_into_multibandtable.   It
+            #    * assembles a list of column names (called `fieldNames`) an 
+            #      arrays of column data (called `columns`) and generates format
+            #      string (called `format`).   This information all comes from
+            #      the dbtable, plus insertion of tab character between fields
+            #    * If multicore, use pipe_printf.   Write to a pipe, using zip
+            #      to output column-oriented inputs as rows:
+            #           for tpl in zip(*columns):
+            #               fout.write(format % tpl)
+            #       and meanwhile start copying from the pipe to db use copy_from
+            #    * otherwise write the whole thing to an in-memory byte stream,
+            #      then use copy_from on that.
+
+            #   transform
+
+            #   insert
+
+        # End for-loop over files in visit
+        if not dryrun:
+            db.commit()
+
+def insert_bit(use_cursor, schema_name, dbimage, **determiners):
+    """
+    Insert data corresponding to one input file into Postgres
+    
+    @param   use_cursor   db cursor or None (for dryrun)
+    @param   schema_name
+    @dbimage DbImage instance
+    @determiners  Uniquely determines this part of the data
+    """
+
+    columns = []
+    field_names = []
+    format = ""
+    # For convenience stuff schema_name into determiners
+    determiners['schema_name'] = schema_name
+    dryrun = (use_cursor is None)
+    if not dryrun:
+        # create table to keep track of ingest if it doesn't already exist
+        use_cursor.execute("""
+        CREATE TABLE IF NOT EXISTS "{schema_name}"."_temp:forced_bit" (
+          visit   Bigint, 
+          raft int, 
+          sensor int, 
+          unique (visit, raft, sensor)
+        )
+        """.format(**locals())
+        )
+
+        # check if our entry is already there
+        select_q = """
+        SELECT visit FROM "{schema_name}"."_temp:forced_bit" WHERE
+        visit={visit} and raft={raft} and sensor={sensor}
+        """.format(**determiners)
+        use_cursor.execute(select_q)
+        if use_cursor.fetchone() is not None:  # bit is already there
+            return
+        
+    first = True
+    for name, fmt, cols in dbimage.get_backend_field_data(""):
+        columns.extend(cols)
+        field_names.append(name)
+        if first:
+            format = fmt
+            first = False
+        else:
+            format += "\t" + fmt
+
+    if dryrun:    # print a piece of the data and exit
+        print("Bit raft={raft}, sensor={sensor}, visit={visit}".format(**determiners))
+        #print("field names: ")
+        all_fields = ' '.join(field_names)
+        print('All fields: ', all_fields)
+
+        print('Format is: \n', format)
+        tsv = ''.join(format % tpl for tpl in zip(*columns))
+        print('Printing tsv[:600]')
+        print(tsv[:600])
+        
+        return
+
+    format += "\n"
+    format = format.encode("utf-8")
+
+    if lib.config.MULTICORE:
+        fin = pipe_printf.open(format, *columns)
+        if use_cursor is not None:
+            use_cursor.copy_from(fin,'"{}"."{}"'.format(schema_name,dbimage.name), 
+                                 sep='\t', columns=field_names)
+    else:
+        tsv = b''.join(format % tpl for tpl in zip(*columns))
+        fin = io.BytesIO(tsv)
+        if use_cursor is not None:
+            use_cursor.copy_from(fin, '"{}"."{}"'.format(schema_name,dbimage.name), 
+                                 sep='\t', size=-1, columns=field_names)
+
+    # Update bookkeeping table
+    insert_q = """
+        INSERT INTO "{schema_name}"."_temp:forced_bit"
+        (visit, raft, sensor) values({visit}, {raft}, {sensor})
+        """.format(**determiners)
+    use_cursor.execute(insert_q)
 
 if __name__ == "__main__":
     main()

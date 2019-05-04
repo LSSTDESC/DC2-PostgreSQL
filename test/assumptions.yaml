@@ -35,13 +35,13 @@ ignores :
 
 tables :
 - table :
-    name : ForcedSource_native
+    name : ForcedSourceNative
     source : forced
     columns : 
       - column_type : column
         name : objectId
       - column_type : column
-        name : ccdVisitId
+        name : ccdVisitId  # RRSSVVVVVVVV where R,S,V <--> raft,sensor,visit
         type : Scalar     # needed only for computed columns
         dtype:  int64     # needed only for computed columns
         compute : ['{visit}', 8, 'zerofill(,)', '{sensor}', 2, 'zerofill(,)', 
