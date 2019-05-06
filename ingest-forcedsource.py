@@ -240,9 +240,6 @@ def insert_visit(schema, finder, assumptions, visit, dryrun=True):
                 insert_bit(use_cursor, schema, remaining_tables[name],
                            **determiners)
 
-            #  Is it sufficient to chunk by visit?  Or should it be by raft, or
-            #  even by ccd?
-            #  Modify old bookkeeping scheme (where granularity was by patch)
             #
             # The guts of of the insert for object catalog is in 
             # insert_patch_into_multibandtable.   It

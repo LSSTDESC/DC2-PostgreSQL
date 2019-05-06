@@ -20,6 +20,15 @@ class Assumptions(object):
     """
 
     def __init__(self, infile):
+        """
+        Initialize an Assumptions object
+        
+        Parameters
+        ----------
+        infile : str
+            yaml file describing assumptions
+
+        """
         self.inf = infile        # string or  file pointer to yaml text file
         self.parsed = None
         self.ignores = None            # store compiled
@@ -29,6 +38,10 @@ class Assumptions(object):
         
 
     def parse(self):
+        """
+        Store information from yaml file internally
+
+        """
         if self.parsed:  return self.parsed
 
         with open(self.inf) as f:
@@ -62,20 +75,21 @@ class Assumptions(object):
                     #    print('key: ',str(field),' value: ', str(t_elt['table'][field]) )
     def apply(self, raw,  **kw):
         """
-        @param raw           A SourceTable instance, typically read from hdu
-        @param  kw           Key-value pairs which may be assoc. with input,
-                             e.g. visit, raft and sensor
-        @return              dict of DbImages, 
-                             obtained by applying operations as described in
-                             our assumptions.
-                             For now only handle case where everything
-                             goes in a single DbImage
+        'Apply' assumptions to information from an input data file
 
-        The following was just merged into kw
-        @param input_type    If more than one type of input file is read in for
-                             ingest, indicate which type it is. If used should 
-                             match value of 'source' keyword for one or more 
-                             tables described in Assumptions instance
+        Parameters
+        ----------
+        raw  : SourceTable instance 
+             Typically initialized from FITS file
+        kw   :  dict
+            Key-value pairs which may be assoc. with input but not explicitly
+            as fields in the SourceTable, such as e.g. visit, raft and sensor
+
+        Returns
+        -------
+        dict of DbImages, keyed by table name.
+
+        For now only handle case where everything goes in a single DbImage
 
         """
         print('assumptions.apply kw arguments: ')
@@ -176,8 +190,14 @@ class Assumptions(object):
         
     def _get_names(self, table_index):
         """
-        @param table_index   Index of table as it appears in Assumptions
-        Return two lists: one of column names and one of column_group names
+        Parameter
+        ---------
+        table_index : int
+            Index of table as it appears in Assumptions
+
+        Returns
+        -------
+        two lists: one of column names and one of column_group names
         """
         columns = self.parsed['tables'][table_index]['table']['columns']
         column_names = []
@@ -188,6 +208,7 @@ class Assumptions(object):
             else:
                 column_group_names.append(c)
         return column_names, column_group_names
+
     def _get_ignores(self):
         if not self.parsed: self.parse()
         
@@ -202,6 +223,12 @@ class Assumptions(object):
             self.ignores.append(re.compile(ig))
 
     def get_tables(self):
+        """
+        Returns
+        -------
+        list of strings
+           Each string is a table name mentioned in the Assumptions
+        """
         if not self.parsed: self.parse()
         if 'tables' not in self.parsed: return None
 
@@ -210,18 +237,3 @@ class Assumptions(object):
             table_names.append(t['table']['name'])
         
         return table_names
-
-if __name__=='__main__':
-    import sys
-    if len(sys.argv) > 1:
-        yaml_file = sys.argv[1]
-    else:
-        yaml_file = 'assumptions.yaml'
-
-    assump = Assumptions(yaml_file)
-    #assump.parse()
-
-    tables = assump.get_tables()
-
-    for t in tables:
-        print(t)
