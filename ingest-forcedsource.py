@@ -87,7 +87,7 @@ def main():
     for v in args.visits:
         insert_visit(args.schemaname, finder, assumptions, v, args.dryrun)
 
-def create_keys(schema, assumptions, dryrun=True):
+def create_keys(schema, finder, assumptions, dryrun=True):
     """
     Suppose there is an assumptions-file-parsing class
     with methods to return table name(s) and generate
@@ -115,7 +115,7 @@ def create_keys(schema, assumptions, dryrun=True):
 
     return True
 
-def drop_keys(schema, assumptions):
+def drop_keys(schema, finder, assumptions, dryrun=True):
     # Assumptions routine, given schema name, should generate the SQL
     pass
 
@@ -159,9 +159,10 @@ def create_table(schema, finder, assumptions, dryrun=True):
             cursor.execute(create_schema_string)
         db.commit()
     # Find a data file path using the finder
-    afile, determiners = finder.get_some_file()
+    remaining_tables = _get_dbimages(finder, assumptions, schema)
+    #afile, determiners = finder.get_some_file()
 
-    hdus = lib.fits.fits_open(afile)  
+    #hdus = lib.fits.fits_open(afile)  
 
     #Read fields into a SourceTable via static method SourceTable.from_hdu
     # Note this should be generalized in case there are several tables.
@@ -169,12 +170,12 @@ def create_table(schema, finder, assumptions, dryrun=True):
     # catalog, where input for each chunk comes from two different files
     # Simplify a bit by insisting each table stores data from only
     # one of the different files.  This is the case now for object catalog.
-    raw_table = lib.sourcetable.SourceTable.from_hdu(hdus[1])
+    #raw_table = lib.sourcetable.SourceTable.from_hdu(hdus[1])
 
     #  Assumptions class applies its 'ignores' to cut it down to what we need
     #  Maybe also subdivide into multiple tables if so described in yaml
     #  Also add definitions for columns not obtained from raw read-in
-    remaining_tables = assumptions.apply(raw_table, **determiners)
+    #remaining_tables = assumptions.apply(raw_table, **determiners)
 
     # Generate CREATE TABLE string for each table in remaining_tables from 
     #the fields in the table (DbImage object)
@@ -233,7 +234,8 @@ def insert_visit(schema, finder, assumptions, visit, dryrun=True):
 
             #  Assumptions class applies 'ignores' to cut it down to what we need
             #  Maybe also subdivide into multiple tables if so described in yaml
-            remaining_tables = assumptions.apply(raw_table, **determiners)
+            remaining_tables = assumptions.apply(raw_table, schema, 
+                                                 **determiners)
 
             for name in remaining_tables:
                 remaining_tables[name].transform()
@@ -344,6 +346,22 @@ def insert_bit(use_cursor, schema_name, dbimage, **determiners):
         (visit, raft, sensor) values({visit}, {raft}, {sensor})
         """.format(**determiners)
     use_cursor.execute(insert_q)
+
+def _get_dbimages(finder, assumptions, schema):
+    """
+    Several operations require knowledge of table(s) to be created
+    or manipulated.   Knowledge contained in finder + assumptions
+    is sufficient
+    """
+    afile, determiners = finder.get_some_file()
+    hdus = lib.fits.fits_open(afile)  
+
+    #Read fields into a SourceTable via static method SourceTable.from_hdu
+    raw_table = lib.sourcetable.SourceTable.from_hdu(hdus[1])
+
+    remaining_tables = assumptions.apply(raw_table, schema, **determiners)
+
+    return remaining_tables
 
 if __name__ == "__main__":
     main()

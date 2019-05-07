@@ -35,7 +35,7 @@ class Assumptions(object):
         # will be dict of table info.  One entry per table. Value is
         # a dict of fields,  key =  name, but without data
         self.finals = None 
-        
+        self.constraints = None
 
     def parse(self):
         """
@@ -73,7 +73,7 @@ class Assumptions(object):
                         raise TypeException("Table definition missing name field")
                     #for field in t_elt['table']:
                     #    print('key: ',str(field),' value: ', str(t_elt['table'][field]) )
-    def apply(self, raw,  **kw):
+    def apply(self, raw,  schema_name, **kw):
         """
         'Apply' assumptions to information from an input data file
 
@@ -81,6 +81,7 @@ class Assumptions(object):
         ----------
         raw  : SourceTable instance 
              Typically initialized from FITS file
+        schema_name : str
         kw   :  dict
             Key-value pairs which may be assoc. with input but not explicitly
             as fields in the SourceTable, such as e.g. visit, raft and sensor
@@ -152,7 +153,6 @@ class Assumptions(object):
                 cf_list = []
                 for i in range(len(c_list)):
                     cf_list.append(str(c_list[i]).format(**kw))
-                    #print('Element ', i, ' is ', cf_list[i])
 
                 s_val = rpn_eval([], cf_list)
                 print('computed value ', s_val)
@@ -168,15 +168,13 @@ class Assumptions(object):
 
                 field = Field(d['name'], d['type'], None, dat, d['doc'], 
                               d['compute'])
-                # print('In apply. Compute column name: ', d['name'], 
-                #      ' Class of data: ', type(field.data))
                 fields[d['name']] = field
             else:
                 print("Field ", key, 
                       ", known to Assumptions, not found in input")
 
 
-        dbimage = DbImage(table_name, fields)
+        dbimage = DbImage(table_name, fields, schema_name)
         dbimage.set_filters([""])
 
         # If we know about double precision fields which should stay
@@ -237,3 +235,32 @@ class Assumptions(object):
             table_names.append(t['table']['name'])
         
         return table_names
+
+    def _get_constraints(self):
+        if not self.parsed: self.parse()
+        
+        if 'constraints' in self.parsed: return self.parsed['constraints']
+        return None
+
+    def get_foreign_keys(self):
+        """
+        Returns
+        _______
+        A list of foreign key definitions
+        """
+        constraints = _get_constraints
+        if constraints is None: return []
+        foreign = []
+        for c in constraints:
+            if c['constraint_type'] == 'fk':
+                foreign.append(c)
+        return foreign
+
+
+    def get_indexes(self):
+        """
+        Returns
+        -------
+        A list of index definitions
+        """
+        return []                #   **** TO-DO ****

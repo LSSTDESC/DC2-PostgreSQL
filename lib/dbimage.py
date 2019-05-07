@@ -47,18 +47,22 @@ class DbImage(object):
            ** determine floating point precision
            ** add data for 'compute' columns
     """
-    __slots__ = ["name", "filters", "fields", "doubles"]
+    __slots__ = ["name", "filters", "fields", "schema_name", "doubles",
+                 "foreign", "index"]
 
-    def __init__(self, name,  fields, doubles=[]):
+    def __init__(self, name,  fields, schema_name, doubles=[],
+                 foreign=None, index=None):
         """
         @param  name     Table name
         @param  fields    Dict mapping field name to a Field (named tuple)
         """
         self.name    = name
-        self.filters = None
+        self.schema_name = schema_name
         self.fields = fields
         self.doubles = doubles  # list of names of fields preserving dbl prec.
-
+        self.filters = None
+        self.foreign = None
+        self.index = None
 
     def set_filters(self, filters):
         """
@@ -79,22 +83,30 @@ class DbImage(object):
         """
         self.doubles += field_names
 
-    #def transform(self, rerunDir, tract, patch, filter, coord):
-    #     """
-    #     Transform to the style in the DB the fields passed in on construction.
-    #     The parameters are additional information that can be used in the transformation.
-    #     @param rerunDir
-    #         Path to the rerun directory from which to generate the master table
-    #     @param tract
-    #         Tract number.
-    #     @param patch
-    #         Patch number (x*100 + y)
-    #     @param filter
-    #         Filter name
-    #     @param coord
-    #         {"ra": numpy.array, "dec": numpy.array}.
-    #         The angles are in degrees.
-    #     """
+    def accept_foreign(foreign):
+        """
+        Store foreign key definitions to be applied to this table
+
+        Parameters
+        ----------
+        foreign  : list of dicts 
+           Each contains keys `column`, `ref_table` and `ref_column`
+        """
+        self.foreign = foreign
+
+    def accept_indexes(indexes):
+        """
+        Store index definitions to be applied to this table
+
+        Parameters
+        ----------
+        indexes  : list of dicts 
+           Each contains key `columns` (value is a list) and may contain 
+           key `property` (value 'unique' or 'primary')
+            
+        """
+        self.indexes = indexes
+
     def transform(self):
         """
         most of the arguments in the original dbtable version were there
@@ -130,7 +142,7 @@ class DbImage(object):
 
     def create(self, cursor, schema_name):
         """
-        Create table in the database.
+        Create table in the database; save schema_name
 
         @param cursor
             DB connection's cursor object
@@ -164,6 +176,84 @@ class DbImage(object):
             cursor.execute(create_string)
         else:
             print(create_string)
+
+    def create_primary(self, cursor):
+        create_pkey_str = """
+        ALTER TABLE {fulltable} ADD CONSTRAINT {table}_pkey PRIMARY KEY ({cols}) 
+        """
+        for i in self.indexes:
+            if 'property' in i:
+                if i['property'] == 'primary':
+                    table = '"' + self.name + '"'
+                    fulltable = '"' + self.schema_name + '"."' + self.name + '"'
+                    cols = ','.join(i['columns'])
+                    create_pkey_q = create_pkey_str.format(**locals())
+                    if cursor is None:
+                        print(create_pkey_q)
+                    else:
+                        cursor.execute(create_pkey_q)
+                    return    # can only have one primary key
+                
+    def drop_primary(self, cursor):
+        drop_pkey_str = """
+        ALTER TABLE {fulltable} DROP CONSTRAINT {table}_pkey
+        """
+        for i in self.indexes:
+            if 'property' in i:
+                if i['property'] == 'primary':
+                    table = '"' + self.name + '"'
+                    fulltable = '"' + self.schema_name + '"."' + self.name + '"'
+                    drop_pkey_q = drop_pkey_str.format(**locals())
+                    if cursor is None:
+                        print(drop_pkey_q)
+                    else:
+                        cursor.execute(drop_pkey_q)
+                    return    # can only have one primary key
+            # produce drop.. string
+            # if cursor not None exexute; else print
+
+    def create_foreign(self, cursor):
+        create_fk_str = """
+        ALTER TABLE {fulltable} ADD CONSTRAINT {table}_{column}_fk 
+        FOREIGN KEY {column} REFERENCES {reftable} ({refcolumn})
+        """ 
+        # can add NOT VALID to end of command above to defer validity
+        # checking on rows already in the db
+        for f in self.foreign:
+            table = '"' +  self.name + '"'
+            fulltable = '"' + self.schema_name + '"."' +  self.name + '"'
+            column = f['column']
+            reftable = '"' + self.schema_name + '"."' + f['ref_table'] + '"'
+            refcolumn = f['ref_column']
+            # produce create.. string
+            create_fk_q = create_fk_str.format(**locals())
+
+            # if cursor not None execute; else print
+            if cursor is None:
+                print(create_fk_q)
+            else:
+                cursor.execute(create_fk_q)
+
+
+    def drop_foreign(self, cursor):
+        drop_fk_str = """
+        ALTER TABLE {fulltable} DROP CONSTRAINT IF EXISTS {table}_{column}_fk 
+        """ 
+        # can add NOT VALID to end of command above to defer validity
+        # checking on rows already in the db
+        for f in self.foreign:
+            table = '"' +  self.name + '"'
+            fulltable = '"' + self.schema_name + '"."' +  self.name + '"'
+            column = f['column']
+
+            # produce drop.. string
+            drop_fk_q = drop_fk_str.format(**locals())
+
+            # if cursor not None execute; else print
+            if cursor is None:
+                print(drop_fk_q)
+            else:
+                cursor.execute(drop_fk_q)
 
     def _get_backend_fields(self, prefix):
         ret = []
@@ -244,25 +334,6 @@ class DbImage(object):
                 members.append((prefix + f.name, f.get_print_format(),
                                 f.get_columns()))
         return members
-
-    #   Likely won't need this at all
-    # def get_exported_fields(self, filter):
-    #     """
-    #     Get field data for the frontend view.
-    #     @param filter (str)
-    #         Filter name.
-    #     @return list of (fieldname, definition, unit, document).
-    #         Each field can be exported as:
-    #             {definition} AS {fieldname}.
-    #     """
-    #     filt = common.filterToShortName[filter] + "_" if filter else ""
-    #     members = []
-
-    #     for algo in self.algos.values():
-    #         members += algo.get_frontend_fields(filt)
-
-    #     return members
-
 
 class DbImage_BandIndependent(DbImage):
     """

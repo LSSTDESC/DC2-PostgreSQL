@@ -202,7 +202,7 @@ class ForcedSourceFinder(Finder):
         """   
         Returns
         -------
-        list of ints
+        sorted list of ints, identifying visits
 
         """
         if len(self.__subdirs) == 0:
@@ -211,4 +211,5 @@ class ForcedSourceFinder(Finder):
         for v in self.__subdirs:
             visits.append(int(v[:-2])) # strip off filter
 
+        visits.sort()
         return visits
