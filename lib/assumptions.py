@@ -35,7 +35,7 @@ class Assumptions(object):
         # will be dict of table info.  One entry per table. Value is
         # a dict of fields,  key =  name, but without data
         self.finals = None 
-        self.constraints = None
+        #self.constraints = None      constraints are per-table
 
     def parse(self):
         """
@@ -57,20 +57,19 @@ class Assumptions(object):
         if type(parsed) != type({}):
             raise TypeError("Input is not a dict")
         for k in parsed:
-            if k not in ['symbols', 'ignores', 'tables']:
+            if k not in ['ignores', 'tables']:
                 warning("Assumptions.__verify: Unknown field ", k,
                         " will be ignored ")
                 continue
-            if type(parsed[k]) != type([]):
+            if k == 'ignores' and type(parsed[k]) != type([]):
                 raise TypeException("Contents of {} is not a list!".format(k))
             if k == 'tables':
-                for t_elt in parsed['tables']:
+                if type(parsed[k]) != type({}):
+                    raise TypeException("Contents of {} is not a dict!".format(k))
+                for t_name, t_elt in parsed['tables'].items():
                     if type(t_elt) != type({}):
                         raise TypeException("Improper table definition")
-                    if 'table' not in t_elt:
-                        raise ValueException("Improper table defintion")
-                    if 'name' not in t_elt['table']:
-                        raise TypeException("Table definition missing name field")
+
                     #for field in t_elt['table']:
                     #    print('key: ',str(field),' value: ', str(t_elt['table'][field]) )
     def apply(self, raw,  schema_name, **kw):
@@ -120,9 +119,10 @@ class Assumptions(object):
             break
 
         fields = PoppingOrderedDict()
-        table_name = self.parsed['tables'][0]['table']['name']
+        table_name = list(self.parsed['tables'].keys())[0]
+        table_def = self.parsed['tables'][table_name]
 
-        column_dicts, column_group_dicts = self._get_names(0)
+        column_dicts, column_group_dicts = self._get_names(table_def)
 
         for key, f in remaining.items():
             # check each one matches a column name or column group in our table
@@ -176,6 +176,17 @@ class Assumptions(object):
 
         dbimage = DbImage(table_name, fields, schema_name)
         dbimage.set_filters([""])
+        constraints = self._get_constraints(table_name)
+        foreign_list = []
+        index_list = []
+        for c in constraints:
+            if c['constraint_type'] == 'fk':
+                foreign_list.append(c)
+            else:
+                index_list.append(c)
+
+        dbimage.accept_foreign(foreign_list)
+        dbimage.accept_indexes(index_list)
 
         # If we know about double precision fields which should stay
         # double precision, this would be the place to call
@@ -186,18 +197,17 @@ class Assumptions(object):
         
         return self.finals
         
-    def _get_names(self, table_index):
+    def _get_names(self, assump_table):
         """
         Parameter
         ---------
-        table_index : int
-            Index of table as it appears in Assumptions
+        The part of the parsed assumptions belonging to a particular table
 
         Returns
         -------
         two lists: one of column names and one of column_group names
         """
-        columns = self.parsed['tables'][table_index]['table']['columns']
+        columns = assump_table['columns']
         column_names = []
         column_group_names = []
         for c in columns:
@@ -230,25 +240,29 @@ class Assumptions(object):
         if not self.parsed: self.parse()
         if 'tables' not in self.parsed: return None
 
-        table_names = []
-        for t in self.parsed['tables']:
-            table_names.append(t['table']['name'])
-        
-        return table_names
+        return list(self.parsed['tables'].keys())
 
-    def _get_constraints(self):
+    def _get_constraints(self, table_name):
         if not self.parsed: self.parse()
-        
-        if 'constraints' in self.parsed: return self.parsed['constraints']
+
+        if table_name in self.parsed['tables']:
+            our_table = self.parsed['tables'][table_name]
+            return our_table['constraints']
+
         return None
 
-    def get_foreign_keys(self):
+    #### Probably don't need either of get_foreign_keys or get_indexes
+    def get_foreign_keys(self, table_name):
         """
+        Parameters
+        ----------
+        table_name : str
+
         Returns
         _______
         A list of foreign key definitions
         """
-        constraints = _get_constraints
+        constraints = _get_constraints(table_name)
         if constraints is None: return []
         foreign = []
         for c in constraints:
@@ -257,10 +271,14 @@ class Assumptions(object):
         return foreign
 
 
-    def get_indexes(self):
+    def get_indexes(self, table_name):
         """
+        Parameters
+        ----------
+        table_name : str
+
         Returns
         -------
-        A list of index definitions
+        A list of index definitions 
         """
         return []                #   **** TO-DO ****

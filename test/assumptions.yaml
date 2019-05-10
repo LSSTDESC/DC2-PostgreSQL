@@ -1,20 +1,16 @@
-# symbols :
-# - symbol :
-#     name : dm_schema_version
-#     #  Names of some fields vary, depending on dm schema version
-#     default : 3
-#     allowed : [1, 2, 3]
-#     usage : single
-# - symbol :
-#     name : flux
-#     default : instflux
-#     allowed : [nil, flux, flux, instflux]
-#     usage :   {index_by : dm_schema_version}
-# - symbol:
-#     name : err
-#     default : err
-#     allowed : [nil, schema, err, err]
-#     usage :  {index_by : dm_schema_version}
+#  Structure of this file is
+#     a dict with two keys.
+#     key 'ignores' has value a list of strings.   Each is a regular expression
+#     key 'tables' has value a dict.   Each key is a table name. Value is
+#     the description of the table, itself a dict
+#
+#     Each table description may have three keys:
+#        'source'      Value is a string
+#        'columns'     Value is a list.   Each item in the list is a dict
+#                      describing either a column or a column group
+#                      All dicts have key column_type.
+#        'constraints' Value is a list.  Each item in the list is a dict.
+#                      All such dicts have a key 'constraint_type'
 ignores :
 -  'base_Circular.*'
 -  'base_Gaussian.*'
@@ -34,44 +30,36 @@ ignores :
 -  'id'
 
 tables :
-- table :
-    name : ForcedSourceNative
-    source : forced
-    columns : 
-      - column_type : column
-        name : objectId
-      - column_type : column
-        name : ccdVisitId  # RRSSVVVVVVVV where R,S,V <--> raft,sensor,visit
-        type : Scalar     # needed only for computed columns
-        dtype:  int64     # needed only for computed columns
-        compute : ['{visit}', 8, 'zerofill(,)', '{sensor}', 2, 'zerofill(,)', 
-                   'prepend(,)', '{raft}', 1, 'zerofill(,)', 'prepend(,)']
-        doc : 'Identifies visit, ccd for associated data'
-      - column_type : column_group
-        name_re : 'base_PsfFlux_inst.*'
-      - column_type : column_group
-        name_re : 'base_PsfFlux_flag.*'
-      - column_type : column_group 
-        name_re : 'base_PixelFlags_flag.*'
-    constraints :
-      - constraint_type : fk
-        column : ccdVisitId
-        ref_table : CcdVisit
-        ref_column: ccdVisitId
-      #- fk : {column : objectId, table : position, refColumn : object_id}
-      - constraint_type : fk
-        column : objectId
-        ref_table : position  # or should it be dpdd ?
-        ref_column : object_id
-      - constraint_type : index
-        property : primary
-        columns : [objectid, ccdVisitId]
-        # Also allow property to have value 'unique', and allow creation
-        # of indexes which are neither primary nor unique
-        # And support key 'where' containing a WHERE clause
-
-
-      
-#  Somewhere there also needs to be config information for the structure
-#  of infilename.   I've put it in the forced-source-specific finder
-#  class ForcedSourceFinder  
+    forcedsourcenative :
+      source : forced
+      columns : 
+        - column_type : column
+          name : objectId
+        - column_type : column
+          name : ccdVisitId  # RRSSVVVVVVVV where R,S,V <--> raft,sensor,visit
+          type : Scalar     # needed only for computed columns
+          dtype:  int64     # needed only for computed columns
+          compute : ['{visit}', 8, 'zerofill(,)', '{sensor}', 2, 'zerofill(,)', 
+                     'prepend(,)', '{raft}', 1, 'zerofill(,)', 'prepend(,)']
+          doc : 'Identifies visit, ccd for associated data'
+        - column_type : column_group
+          name_re : 'base_PsfFlux_inst.*'
+        - column_type : column_group
+          name_re : 'base_PsfFlux_flag.*'
+        - column_type : column_group 
+          name_re : 'base_PixelFlags_flag.*'
+      constraints :
+        - constraint_type : fk
+          column : ccdVisitId
+          ref_table : ccdvisit
+          ref_column: ccdVisitId
+        - constraint_type : fk
+          column : objectId
+          ref_table : position  # or should it be dpdd ?
+          ref_column : object_id
+        - constraint_type : index
+          property : primary
+          columns : [objectid, ccdVisitId]
+          # Also allow property to have value 'unique', and allow creation
+          # of indexes which are neither primary nor unique
+          # And support key 'where' containing a WHERE clause

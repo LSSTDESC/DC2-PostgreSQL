@@ -72,12 +72,12 @@ def main():
     lib.config.indexSpace = ""
 
     assumptions = Assumptions(args.assumptions)
-    if (args.create_keys):
-        create_keys(args.schema, assumptions, args.dryrun)
-        exit(0)
-    
     finder = ForcedSourceFinder(args.forceddir)
 
+    if (args.create_keys):
+        create_keys(args.schemaname, finder, assumptions, args.dryrun)
+        exit(0)
+    
     something = create_table(args.schemaname, finder, assumptions, 
                              args.dryrun)
 
@@ -89,34 +89,70 @@ def main():
 
 def create_keys(schema, finder, assumptions, dryrun=True):
     """
-    Suppose there is an assumptions-file-parsing class
-    with methods to return table name(s) and generate
-    sql for creating indexes, foreign keys
-    assumptions = Assumptions(assumptions_file)
-    """
-    # if (not dryrun):
-    #     #  Get table name list from Assumptions
-    #     for t in tables:
-    #     if not lib.common.db_table_exists(schema, t):
-    #         return False
+    Creates foreign keys and primary keys as described in assumptions
 
-    # Generate list of SQL commands for creating constraints
-    # This should be a service of Assumptions.  Pass in schema name
-    # Return a list of strings, each corresponding to one CREATE
-    # command.  Or maybe lump together all those belonging to the
-    # same table.  Decide what should be done in a single commit.
+    Parameters
+    ----------
+    schema : str
+      schema name
+    finder : Finder object
+      used to find the data to which assumptions are applied
+    assumptions : Assumptions object
+      includes db constraint definitions among other things
+    dryrun :  boolean
+      determines whether we just write out SQL or execute it
+    """
+    dbimages = _get_dbimages(schema, finder, assumptions)
+
+
     if (dryrun):
         # print the list
+        for key,d in dbimages.items():
+            d.create_foreign(None)
+            d.create_primary(None)
         return True
     else:
-        # Try to execute.
-        # return True iff successful
-        pass
-
+        db = lib.common.new_db_connection()
+        with db.cursor() as cursor:
+            for key,d in dbimages.items():
+                d.create_foreign(cursor)
+                d.create_primary(cursor)
+        db.commit()
     return True
 
 def drop_keys(schema, finder, assumptions, dryrun=True):
-    # Assumptions routine, given schema name, should generate the SQL
+    """
+    Drop foreign keys and primary keys as described in assumptions
+
+    Parameters
+    ----------
+    schema : str
+      schema name
+    finder : Finder object
+      used to find the data to which assumptions are applied
+    assumptions : Assumptions object
+      includes db constraint definitions among other things
+    dryrun :  boolean
+      determines whether we just write out SQL or execute it
+    """
+    dbimages = _get_dbimages(schema, finder, assumptions)
+
+
+    if (dryrun):
+        # print the list
+        for d in dbimages:
+            d.drop_foreign(None)
+            d.drop_primary(None)
+        return True
+    else:
+        db = lib.common.new_db_connection()
+        with db.cursor() as cursor:
+            for d in dbimages:
+                d.drop_foreign(cursor)
+                d.drop_primary(cursor)
+        db.commit()
+    return True
+
     pass
 
 def create_table(schema, finder, assumptions, dryrun=True):
@@ -159,10 +195,7 @@ def create_table(schema, finder, assumptions, dryrun=True):
             cursor.execute(create_schema_string)
         db.commit()
     # Find a data file path using the finder
-    remaining_tables = _get_dbimages(finder, assumptions, schema)
-    #afile, determiners = finder.get_some_file()
-
-    #hdus = lib.fits.fits_open(afile)  
+    remaining_tables = _get_dbimages(schema, finder, assumptions)
 
     #Read fields into a SourceTable via static method SourceTable.from_hdu
     # Note this should be generalized in case there are several tables.
@@ -175,7 +208,6 @@ def create_table(schema, finder, assumptions, dryrun=True):
     #  Assumptions class applies its 'ignores' to cut it down to what we need
     #  Maybe also subdivide into multiple tables if so described in yaml
     #  Also add definitions for columns not obtained from raw read-in
-    #remaining_tables = assumptions.apply(raw_table, **determiners)
 
     # Generate CREATE TABLE string for each table in remaining_tables from 
     #the fields in the table (DbImage object)
@@ -347,7 +379,7 @@ def insert_bit(use_cursor, schema_name, dbimage, **determiners):
         """.format(**determiners)
     use_cursor.execute(insert_q)
 
-def _get_dbimages(finder, assumptions, schema):
+def _get_dbimages(schema, finder, assumptions):
     """
     Several operations require knowledge of table(s) to be created
     or manipulated.   Knowledge contained in finder + assumptions

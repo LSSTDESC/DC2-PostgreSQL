@@ -83,7 +83,7 @@ class DbImage(object):
         """
         self.doubles += field_names
 
-    def accept_foreign(foreign):
+    def accept_foreign(self, foreign):
         """
         Store foreign key definitions to be applied to this table
 
@@ -94,7 +94,7 @@ class DbImage(object):
         """
         self.foreign = foreign
 
-    def accept_indexes(indexes):
+    def accept_indexes(self, indexes):
         """
         Store index definitions to be applied to this table
 
@@ -105,7 +105,7 @@ class DbImage(object):
            key `property` (value 'unique' or 'primary')
             
         """
-        self.indexes = indexes
+        self.index = indexes
 
     def transform(self):
         """
@@ -179,13 +179,13 @@ class DbImage(object):
 
     def create_primary(self, cursor):
         create_pkey_str = """
-        ALTER TABLE {fulltable} ADD CONSTRAINT {table}_pkey PRIMARY KEY ({cols}) 
+        ALTER TABLE {fulltable} ADD CONSTRAINT "{table}_pkey" PRIMARY KEY ({cols}) 
         """
-        for i in self.indexes:
+        for i in self.index:
             if 'property' in i:
                 if i['property'] == 'primary':
-                    table = '"' + self.name + '"'
-                    fulltable = '"' + self.schema_name + '"."' + self.name + '"'
+                    table = self.name 
+                    fulltable = '"' + self.schema_name + '"."' + table + '"'
                     cols = ','.join(i['columns'])
                     create_pkey_q = create_pkey_str.format(**locals())
                     if cursor is None:
@@ -195,10 +195,13 @@ class DbImage(object):
                     return    # can only have one primary key
                 
     def drop_primary(self, cursor):
-        drop_pkey_str = """
-        ALTER TABLE {fulltable} DROP CONSTRAINT {table}_pkey
         """
-        for i in self.indexes:
+        
+        """
+        drop_pkey_str = """
+        ALTER TABLE {fulltable} DROP CONSTRAINT IF EXISTS "{table}_pkey"
+        """
+        for i in self.index:
             if 'property' in i:
                 if i['property'] == 'primary':
                     table = '"' + self.name + '"'
@@ -214,13 +217,13 @@ class DbImage(object):
 
     def create_foreign(self, cursor):
         create_fk_str = """
-        ALTER TABLE {fulltable} ADD CONSTRAINT {table}_{column}_fk 
-        FOREIGN KEY {column} REFERENCES {reftable} ({refcolumn})
+        ALTER TABLE {fulltable} ADD CONSTRAINT "{table}_{column}_fk"
+        FOREIGN KEY ({column}) REFERENCES {reftable} ({refcolumn})
         """ 
         # can add NOT VALID to end of command above to defer validity
         # checking on rows already in the db
         for f in self.foreign:
-            table = '"' +  self.name + '"'
+            table =  self.name
             fulltable = '"' + self.schema_name + '"."' +  self.name + '"'
             column = f['column']
             reftable = '"' + self.schema_name + '"."' + f['ref_table'] + '"'
@@ -237,12 +240,12 @@ class DbImage(object):
 
     def drop_foreign(self, cursor):
         drop_fk_str = """
-        ALTER TABLE {fulltable} DROP CONSTRAINT IF EXISTS {table}_{column}_fk 
+        ALTER TABLE {fulltable} DROP CONSTRAINT IF EXISTS "{table}_{column}_fk" 
         """ 
         # can add NOT VALID to end of command above to defer validity
         # checking on rows already in the db
         for f in self.foreign:
-            table = '"' +  self.name + '"'
+            table = self.name
             fulltable = '"' + self.schema_name + '"."' +  self.name + '"'
             column = f['column']
 
