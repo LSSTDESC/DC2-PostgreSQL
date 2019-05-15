@@ -1,0 +1,95 @@
+# Each dict in in the list below may have the following keys:
+# NativeInputs  (required) - list of column names as they appear in Fits headers
+#     except that certain substitutions may be specified by using substrings 
+#     {BAND}, {FLUX}, {ERR}. Code interpreting the YAML should substitute for
+#     FLUX and ERR as appropriate, depending on schema version of fits files.
+# DPDDname (required)   Output name.  Supports substitutions like NativeInputs
+# Datatype (optional)   May be any of int, long, double, float (default), flag.
+# Lambda (optional)   Expression (as string) needed to compute dpdd quantity
+# RPN (optional) RPN-like representation of how to compute dpdd quantity.
+# When neither Lambda nor RPN is present, output is just set to value of input 
+#      (should be only one item in the list)
+# The forced source view includes some items also in the object catalog view
+# (known as dpdd).   
+# Another option would be to include it all in a single view
+#
+# See also the file nativeforcedsource_to_dpdd_postgres.yaml
+- 
+    NativeInputs:   [objectid]
+    Datatype: long
+    DPDDname: objectid
+- 
+    NativeInputs: [coord_ra]
+    Datatype: double
+    DPDDname: ra
+- 
+    NativeInputs: [coord_dec]
+    Datatype: double
+    DPDDname: dec
+-
+    NativeInputs: [base_ClassificationExtendedness_value]
+    DPDDname:  extendedness
+-
+    NativeInputs: ['base_Blendedness_abs_{FLUX}']
+    DPDDname: blendedness
+-   NativeInputs: ['filtername']
+    DPDDname: filtername
+    #Datatype: 'char(1)'
+-   
+    NativeInputs: ['obsstart']
+    DPDDname: obsstart
+    #Datatype: 'timestamp'
+- 
+    NativeInputs: ['{BAND}_base_PsfFlux_{FLUX}']
+    DPDDname: 'psFlux_{BAND}'
+-
+    NativeInputs: ['{BAND}_base_PsfFlux_flag']
+    DPDDname: 'psFlux_flag_{BAND}'
+- 
+    NativeInputs: ['forcedsourcenative.base_PsfFlux_{FLUX}']
+    DPDDname: 'psFlux'
+-
+    NativeInputs: ['forcedsourcenative.base_PsfFlux_flag']
+    DPDDname: 'psFlux_flag'
+-
+    NativeInputs: ['{BAND}_base_psfFlux_{FLUX}{ERR}']
+    DPDDname: 'psFluxErr_{BAND}'
+- 
+    NativeInputs: ['{BAND}_base_PsfFlux_{FLUX}']
+    DPDDname: 'mag_{BAND}'
+    Lambda: 'lambda x: -2.5 * np.log10(x) + 27.0'
+    RPN: [27.0,x1,'log()',-2.5, '*','+']
+- 
+    NativeInputs: ['{BAND}_base_PsfFlux_{FLUX}', '{BAND}_base_PsfFlux_{FLUX}{ERR}' ]
+    DPDDname: 'magerr_{BAND}'
+    Lambda: 'lambda x,y: (2.5 * y) / (x* np.log10(x))'
+    RPN: [x1,'log()',x1, '*', 2.5,x2,'*','/']
+-
+    NativeInputs: ['forcedsourcenative.base_psfFlux_{FLUX}{ERR}']
+    DPDDname: 'psFluxErr'
+- 
+    NativeInputs: ['forcedsourcenative.base_PsfFlux_{FLUX}']
+    DPDDname: 'mag'
+    Lambda: 'lambda x: -2.5 * np.log10(x) + 27.0'
+    RPN: [27.0,x1,'log()',-2.5, '*','+']
+- 
+    NativeInputs: ['forcedsourcenative.base_PsfFlux_{FLUX}', 'forcedsourcenative.base_PsfFlux_{FLUX}{ERR}' ]
+    DPDDname: 'magerr'
+    Lambda: 'lambda x,y: (2.5 * y) / (x* np.log10(x))'
+    RPN: [x1,'log()',x1, '*', 2.5,x2,'*','/']
+-
+    NativeInputs: [dpdd_ref.base_PixelFlags_flag_edge,dpdd_ref.base_PixelFlags_flag_interpolatedCenter,dpdd_ref.base_PixelFlags_flag_saturatedCenter,dpdd_ref.base_PixelFlags_flag_crCenter,dpdd_ref.base_PixelFlags_flag_bad,dpdd_ref.base_PixelFlags_flag_suspectCenter,dpdd_ref.base_PixelFlags_flag_clipped]
+    DPDDname:     good
+    Datatype:     flag
+    RPN:          [x1, x2, 'or', x3, 'or', x4, 'or', x5, 'or', x6, 'or', x7, 'or', 'not']
+-
+    NativeInputs: [forcedsourcenative.base_PixelFlags_flag_edge,forcedsourcenative.base_PixelFlags_flag_interpolatedCenter,forcedsourcenative.base_PixelFlags_flag_saturatedCenter,forcedsourcenative.base_PixelFlags_flag_crCenter,forcedsourcenative.base_PixelFlags_flag_bad,forcedsourcenative.base_PixelFlags_flag_suspectCenter]
+    DPDDname:     forcedsourcevisit_good
+    Datatype:     flag
+    RPN:          [x1, x2, 'or', x3, 'or', x4, 'or', x5, 'or', x6, 'or', 'not']
+-
+    NativeInputs: [dpdd_ref.base_PixelFlags_flag_edge,dpdd_ref.base_PixelFlags_flag_interpolatedCenter,dpdd_ref.base_PixelFlags_flag_saturatedCenter,dpdd_ref.base_PixelFlags_flag_crCenter,dpdd_ref.base_PixelFlags_flag_bad,dpdd_ref.base_PixelFlags_flag_suspectCenter,dpdd_ref.base_PixelFlags_flag_clipped, deblend_skipped]
+    DPDDname:     clean
+    Datatype:     flag
+    RPN:          [x1, x2, 'or', x3, 'or', x4, 'or', x5, 'or', x6, 'or', x7, 'or', x8, 'or', 'not']
+

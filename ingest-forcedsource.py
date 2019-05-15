@@ -15,6 +15,7 @@ import lib.config
 
 from lib.assumptions import Assumptions
 from lib.forcedsource_finder import ForcedSourceFinder
+from lib.dpdd import DpddView
 
 if lib.config.MULTICORE:
     from lib import pipe_printf
@@ -163,7 +164,7 @@ def create_table(schema, finder, assumptions, dryrun=True):
     @param  assumptions  Instance of class describing columns to be 
                          included and excluded, among other things
     @param  dryrun       If true only print out sql.  If false, execute 
-    @returns             False if not dryrun and table exists; else True
+    @returns             False if not dryrun and table and view exist; else True
     If dryrun is False and the table already exists, do nothing.
     Otherwise
     From information in the assumptions file plus information about
@@ -174,7 +175,9 @@ def create_table(schema, finder, assumptions, dryrun=True):
 
     # If not dryrun, check to see if table(s) already exists
     bNeedCreating = False
+    bNeedView = False
 
+    print('Inside create_table')
     db = lib.common.new_db_connection()
 
     create_schema_string = 'CREATE SCHEMA IF NOT EXISTS "{schema}"'.format(**locals())
@@ -185,41 +188,105 @@ def create_table(schema, finder, assumptions, dryrun=True):
         with db.cursor() as cursor:
             try:
                 cursor.execute('SELECT 0 FROM "{schema}"."{aTable}" WHERE FALSE;'.format(**locals()))
-                return False
             except psycopg2.ProgrammingError:
                 bNeedCreating = True
                 db.rollback()
+    # Now check for view
+    with db.cursor() as cursor:
+        try:
+            cursor.execute('SELECT 0 FROM "{schema}"."forcedsource_dpdd" WHERE FALSE;'.format(**locals()))
+        except psycopg2.ProgrammingError:
+            bNeedView = True
+            db.rollback()
+
+    if bNeedView:
+        print("view needs creating")
+    else:
+        print("View is already there")
+    
+    if (bNeedCreating or bNeedView) is False:  return False
 
     if bNeedCreating:
         with db.cursor() as cursor:
             cursor.execute(create_schema_string)
         db.commit()
-    # Find a data file path using the finder
-    remaining_tables = _get_dbimages(schema, finder, assumptions)
+        # Find a data file path using the finder
+        remaining_tables = _get_dbimages(schema, finder, assumptions)
 
-    #Read fields into a SourceTable via static method SourceTable.from_hdu
-    # Note this should be generalized in case there are several tables.
-    # That wouldn't be hard, but still wouldn't be adequate for object
-    # catalog, where input for each chunk comes from two different files
-    # Simplify a bit by insisting each table stores data from only
-    # one of the different files.  This is the case now for object catalog.
-    #raw_table = lib.sourcetable.SourceTable.from_hdu(hdus[1])
+        #Read fields into a SourceTable via static method SourceTable.from_hdu
+        # Note this should be generalized in case there are several tables.
+        # That wouldn't be hard, but still wouldn't be adequate for object
+        # catalog, where input for each chunk comes from two different files
+        # Simplify a bit by insisting each table stores data from only
+        # one of the different files.  This is the case now for object catalog.
+        #raw_table = lib.sourcetable.SourceTable.from_hdu(hdus[1])
 
-    #  Assumptions class applies its 'ignores' to cut it down to what we need
-    #  Maybe also subdivide into multiple tables if so described in yaml
-    #  Also add definitions for columns not obtained from raw read-in
+        #  Assumptions class applies its 'ignores' to cut it down to what we need
+        #  Maybe also subdivide into multiple tables if so described in yaml
+        #  Also add definitions for columns not obtained from raw read-in
 
-    # Generate CREATE TABLE string for each table in remaining_tables from 
-    #the fields in the table (DbImage object)
-    with db.cursor() as cursor:
-        for name in remaining_tables:
-            remaining_tables[name].transform()
-            if dryrun:
-                remaining_tables[name].create(None, schema)
-            else:
-                remaining_tables[name].create(cursor, schema)
-    if not dryrun: db.commit()
+        # Generate CREATE TABLE string for each table in remaining_tables from 
+        #the fields in the table (DbImage object)
+        with db.cursor() as cursor:
+            for name in remaining_tables:
+                remaining_tables[name].transform()
+                if dryrun:
+                    remaining_tables[name].create(None, schema)
+                else:
+                    remaining_tables[name].create(cursor, schema)
+            if not dryrun: 
+                db.commit()
+    
+    if bNeedView:     # table was already there, but not view
+        if not dryrun:
+            with db.cursor() as cursor:
+                create_view(cursor, schema)
+            db.commit()
+        else:
+            create_view(None, schema)
     return True
+
+def create_view(cursor, schema, dm_schema=3):
+    """
+    Creates dpdd view.
+    @param cursor
+       cursor for writing to db.  If None, just print
+    @param schemaName
+       Name of schema in which to locate the view
+    @param dm_schema
+       dm table schema version used to produce the data.  Naming conventions
+       for native quantities vary somewhat depending on this version
+
+    """
+    yaml_path = os.path.join(os.getenv('DPDD_YAML'),
+                             'nativeforcedsource_to_dpdd.yaml')
+    yaml_override = os.path.join(os.getenv('DPDD_YAML'),
+                                 'nativeforcedsource_to_dpdd_postgres.yaml')
+    # would be neater to include view table spec in yaml
+    table_spec = _get_view_table_spec(schema) # unique to forced source data
+    view_builder = DpddView(schema,
+                            table_spec = _get_view_table_spec(schema),
+                            view_name = 'forcedsource_dpdd',
+                            yaml_path=yaml_path,
+                            yaml_override=yaml_override)
+    vs = view_builder.view_string()
+    if cursor:
+        cursor.execute(vs)
+    else:
+        print("Create view command would be:")
+        print(vs)
+
+def _get_view_table_spec(schema):
+    join_list = ['"{schema}".position']
+    join_list.append('JOIN "{schema}".forcedsourcenative on object_id = objectid')
+    join_list.append('JOIN "{schema}".ccdvisit using (ccdvisitid)')
+    join_list.append('JOIN "{schema}".dpdd_ref using (object_id)')
+    join_list.append('JOIN "{schema}".dpdd_forced using (object_id)')
+
+    joined = """
+    """.join(join_list)
+    table_spec = joined.format(**locals())
+    return table_spec
 
 def insert_visit(schema, finder, assumptions, visit, dryrun=True):
     """

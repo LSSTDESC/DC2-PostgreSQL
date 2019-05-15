@@ -1,0 +1,34 @@
+# Special handling needed for HSC-script-created Postgres database.  If DPDDname
+# here matches a value in native_to_dpdd.yaml, definition in this file should be
+# used.
+-
+  NativeInputs: [coord]
+  Datatype: double
+  DPDDname: ra
+  RPN: [x1, 'public.coord_to_ra()']
+-
+  NativeInputs: [coord]
+  Datatype: double
+  DPDDname: dec
+  RPN: [x1, 'public.coord_to_dec()']
+-
+  NativeInputs: ['{BAND}_base_PsfFlux_{FLUX}']
+  DPDDname: 'mag_{BAND}'
+  RPN: [x1, '_forced:export_mag()']
+-
+  NativeInputs: ['{BAND}_base_PsfFlux_{FLUX}', '{BAND}_base_PsfFlux_{FLUX}{ERR}' ]
+  DPDDname: 'magerr_{BAND}'
+  RPN: [x2, x1, '_forced:export_magerr(,)']
+
+-
+  NativeInputs: ['forcedsourcenative.base_PsfFlux_{FLUX}']
+  DPDDname: 'mag'
+  RPN: [x1, '_forced:export_mag()']
+-
+  NativeInputs: ['forcedsourcenative.base_PsfFlux_{FLUX}', 'forcedsourcenative.base_PsfFlux_{FLUX}{ERR}' ]
+  DPDDname: 'magerr'
+  RPN: [x2, x1, '_forced:export_magerr(,)']
+-
+  NativeInputs: ['coord']
+  DPDDname: 'coord'
+  Datatype: 'Earth'

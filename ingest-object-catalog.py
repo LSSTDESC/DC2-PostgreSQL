@@ -257,7 +257,7 @@ def create_view(cursor, schemaName, dm_schema):
     """
     yaml_path = os.path.join(os.getenv('DPDD_YAML'),'native_to_dpdd.yaml')
     yaml_override = os.path.join(os.getenv('DPDD_YAML'),
-                                 'postgres_override.yaml')
+                                 'native_to_dpdd_postgres.yaml')
     view_builder = DpddView(schemaName, yaml_path=yaml_path,
                             yaml_override=yaml_override,
                             dm_schema_version=int(dm_schema))

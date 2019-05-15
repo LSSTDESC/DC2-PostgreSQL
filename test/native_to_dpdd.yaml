@@ -10,7 +10,7 @@
 # When neither Lambda nor RPN is present, output is just set to value of input 
 #      (should be only one item in the list)
 #
-# See also the file postgres_override.yaml
+# See also the file native_to_dpdd_postgres.yaml
 - 
     NativeInputs:   [id]
     Datatype: long

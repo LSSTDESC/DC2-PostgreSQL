@@ -39,6 +39,8 @@ class DpddView(object):
                            all inputs needed for DPDD quantities are
                            contained in them.  
                            position table should be first
+    table_spec             alternative to tables arg: caller provides table spec
+                           string
     yaml_path              Path to yaml file describing transformations
     override_path          Path to yaml file describing Postgres-specific
                            overrides
@@ -50,11 +52,12 @@ class DpddView(object):
                            Allowable values are 1,2 or 3
     """
     def __init__(self, dbschema, tables=['position', 'dpdd_ref', 'dpdd_forced'],
-                 bands=['g','i','r','u','y','z'], 
+                 table_spec = None, bands=['g','i','r','u','y','z'], 
                  yaml_path='native_to_dpdd.yaml', pixel_scale=0.2,
-                 yaml_override=None, dm_schema_version=3):
+                 yaml_override=None, dm_schema_version=3, view_name='dpdd'):
         self.dbschema = dbschema
         self.tables = tables
+        self.table_spec = table_spec
         self.yaml_path = yaml_path
         self.yaml_override = yaml_override
         self.dm_schema_version = dm_schema_version
@@ -62,6 +65,7 @@ class DpddView(object):
         self.pixel_scale=pixel_scale
         self.ERR = 'err'
         self.FLUX = 'instflux'
+        self.view_name = view_name
         if dm_schema_version not in (1,2,3):
             raise ValueError('Unsupported schema version {}'.format(str(db_schema_version)))
 
@@ -168,16 +172,18 @@ class DpddView(object):
         
     def view_string(self):
         dbschema = self.dbschema
-        if len(self.tables) == 1:
-            table_spec = '"{}"."{}"'.format(dbschema, self.tables[0])
-        else:
-            join_list = [ '"{}"."{}"'.format(dbschema, self.tables[0]) ] 
-            for table in self.tables[1:]:
-                join_list.append('LEFT JOIN "{}"."{}" USING (object_id)'.format(dbschema, table) )
+        table_spec = self.table_spec
+        if table_spec is None:
+            if len(self.tables) == 1:
+                table_spec = '"{}"."{}"'.format(dbschema, self.tables[0])
+            else:
+                join_list = [ '"{}"."{}"'.format(dbschema, self.tables[0]) ] 
+                for table in self.tables[1:]:
+                    join_list.append('LEFT JOIN "{}"."{}" USING (object_id)'.format(dbschema, table) )
                   
-            table_spec = """
-            """.join(join_list)
-        
+                table_spec = """
+                """.join(join_list)
+
         dpdd_yaml = DpddYaml(open(self.yaml_path)).parse()
         if self.yaml_override:
             override_yaml = DpddYaml(open(self.yaml_override)).parse()
@@ -209,7 +215,8 @@ class DpddView(object):
         sFields = """,
         """.join(fields)
 
-        cv = """CREATE VIEW {dbschema}.dpdd AS ( 
+        view_name = self.view_name
+        cv = """CREATE VIEW {dbschema}.{view_name} AS ( 
              SELECT
                    {sFields}
              FROM
