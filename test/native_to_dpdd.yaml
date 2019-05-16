@@ -11,6 +11,20 @@
 #      (should be only one item in the list)
 #
 # See also the file native_to_dpdd_postgres.yaml
+view_name : dpdd
+
+table_spec :
+-
+  table_name : position
+-
+  table_name : dpdd_ref
+  join_using : [object_id]
+  join_type  : 'inner join'
+-
+  table_name : dpdd_forced
+  join_using : [object_id]
+  join_type  : 'inner join'
+columns:
 - 
     NativeInputs:   [id]
     Datatype: long

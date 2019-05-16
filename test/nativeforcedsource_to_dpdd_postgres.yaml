@@ -1,6 +1,7 @@
 # Special handling needed for HSC-script-created Postgres database.  If DPDDname
 # here matches a value in native_to_dpdd.yaml, definition in this file should be
 # used.
+columns:
 -
   NativeInputs: [coord]
   Datatype: double

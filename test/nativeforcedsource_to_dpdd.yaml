@@ -14,6 +14,28 @@
 # Another option would be to include it all in a single view
 #
 # See also the file nativeforcedsource_to_dpdd_postgres.yaml
+view_name : forcedsource
+table_spec :
+-
+    table_name : position
+- 
+    table_name : forcedsourcenative
+    join_type  : 'inner join'
+    join_on : 'objectid = object_id'
+-
+    table_name : ccdvisit
+    join_type : 'join'
+    join_using : [ccdvisitid]
+-
+    table_name : dpdd_ref
+    join_type : 'join'
+    join_using : [object_id]
+-
+    table_name : dpdd_forced
+    join_type : 'join'
+    join_using : [object_id]
+
+columns:
 - 
     NativeInputs:   [objectid]
     Datatype: long
