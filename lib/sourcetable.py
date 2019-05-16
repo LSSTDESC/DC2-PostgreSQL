@@ -144,19 +144,19 @@ class Field(collections.namedtuple("Field_",
             if len(shape) > 1:
                 nameFmt = self.name + "{}" * len(shape[1:])
                 return [
-                    Field(nameFmt.format(*index), "Scalar", self.unit, self.data[(Ellipsis,)+index], self.doc)
+                    Field(nameFmt.format(*index), "Scalar", self.unit, self.data[(Ellipsis,)+index], self.doc, None)
                     for index in itertools.product(*[range(n) for n in shape[1:]])
                 ]
             else:
                 nameFmt = self.name + "0"
                 return [
-                    Field(nameFmt, "Scalar", self.unit, self.data, self.doc)
+                    Field(nameFmt, "Scalar", self.unit, self.data, self.doc, None)
                 ]
 
         # other types
         nameFmt = self.name + "_{}"
         return [
-            Field(nameFmt.format(member), "Scalar", self.unit, self.data[..., i], self.doc)
+            Field(nameFmt.format(member), "Scalar", self.unit, self.data[..., i], self.doc, None)
             for i, member in enumerate(Field.typesToMembers[self.type])
         ]
 
@@ -273,7 +273,7 @@ class Field_earth(Field):
         radius = 180 * 3600 / numpy.pi
         xyz *= radius
 
-        return Field_earth(name, "Scalar", "", xyz, "")
+        return Field_earth(name, "Scalar", "", xyz, "", None)
 
     def get_sqltype(self):
         return "Earth"

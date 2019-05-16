@@ -151,6 +151,7 @@ class DbImage(object):
             Name of the schema in which to locate the table
         """
         ### members = ['object_id Bigint']  Don't always have this
+        print('In DbImage.create( )')
         members = []
         for filter in self.filters:
             #filt = common.filterToShortName[filter] + "_" if filter else ""

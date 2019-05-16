@@ -255,9 +255,9 @@ def create_view(cursor, schemaName, dm_schema):
        for native quantities vary somewhat depending on this version
 
     """
-    yaml_path = os.path.join(os.getenv('DPDD_YAML'),'native_to_dpdd.yaml')
+    yaml_path = os.path.join(os.getenv('DPDD_YAML'),'nativeobject_to_dpddview.yaml')
     yaml_override = os.path.join(os.getenv('DPDD_YAML'),
-                                 'native_to_dpdd_postgres.yaml')
+                                 'nativeobject_to_dpddview_postgres.yaml')
     view_builder = DpddView(schemaName, yaml_path=yaml_path,
                             yaml_override=yaml_override,
                             dm_schema_version=int(dm_schema))

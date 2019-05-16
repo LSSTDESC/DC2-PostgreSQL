@@ -14,19 +14,34 @@ class DpddYaml(object):
         self.inf = infile        # string or  file pointer to yaml text file
 
     def parse(self):
-        y = yload(self.inf)
-        if type(y) != type([]):
-            raise TypeError("Input is not a list")
-        dpdd_dict = {}
-        for i in y:
-            if type(i) != type({}):
-                raise TypeError("Item is not a dict")
-            if 'DPDDname' not in i:
-                raise AttributeError("Entry missing DPDDname")
-            if 'RPN' not in i and len(i['NativeInputs']) != 1:
-                raise AttributeError("Missing RPN attribute")
-        return y
+        def _verify_columns(stuff):
+            if 'columns' in stuff:
+                if type(stuff['columns']) != type([]):
+                    raise TypeError('Wrong columns structure')
+                for i in stuff['columns']:
+                    if type(i) != type({}):
+                        raise TypeError("Item is not a dict")
+                    if 'DPDDname' not in i:
+                        raise AttributeError("Entry missing DPDDname")
+                    if 'RPN' not in i and len(i['NativeInputs']) != 1:
+                        raise AttributeError("Missing RPN attribute")
+            return
 
+        def _verify_table_spec(stuff):
+            if 'table_spec' in stuff:
+                if type(stuff['table_spec']) != type([]):
+                    raise TypeError('Wrong table_spec structure')
+                for i in stuff['table_spec']:
+                    if type(i) != type({}):
+                        raise TypeError("table spec item is not a dict")
+
+        y = yload(self.inf)
+        if type(y) != type({}):
+            raise TypeError("Input is not a dict")
+        _verify_columns(y)
+        _verify_table_spec(y)
+
+        return y
 
 class DpddView(object):
     """
@@ -35,12 +50,6 @@ class DpddView(object):
     This class can generate the string used to create the view.
 
     dbschema               Name of schema in Postgres db. Required
-    tables                 List of tablenames to be joined such that
-                           all inputs needed for DPDD quantities are
-                           contained in them.  
-                           position table should be first
-    table_spec             alternative to tables arg: caller provides table spec
-                           string
     yaml_path              Path to yaml file describing transformations
     override_path          Path to yaml file describing Postgres-specific
                            overrides
@@ -51,21 +60,23 @@ class DpddView(object):
                            
                            Allowable values are 1,2 or 3
     """
-    def __init__(self, dbschema, tables=['position', 'dpdd_ref', 'dpdd_forced'],
-                 table_spec = None, bands=['g','i','r','u','y','z'], 
+    def __init__(self, dbschema, 
+                 bands=['g','i','r','u','y','z'], 
                  yaml_path='native_to_dpdd.yaml', pixel_scale=0.2,
-                 yaml_override=None, dm_schema_version=3, view_name='dpdd'):
+                 yaml_override=None, dm_schema_version=3):
         self.dbschema = dbschema
-        self.tables = tables
-        self.table_spec = table_spec
         self.yaml_path = yaml_path
         self.yaml_override = yaml_override
         self.dm_schema_version = dm_schema_version
         self.bands = bands
         self.pixel_scale=pixel_scale
+
+        # Next two values are obtained from yaml file
+        self.view_name = None
+        self.table_spec = None
+
         self.ERR = 'err'
         self.FLUX = 'instflux'
-        self.view_name = view_name
         if dm_schema_version not in (1,2,3):
             raise ValueError('Unsupported schema version {}'.format(str(db_schema_version)))
 
@@ -85,6 +96,37 @@ class DpddView(object):
             else: itemdict['Datatype'] = 'float'
             n_dict[i['DPDDname']] = itemdict
         return n_dict      
+    @staticmethod
+    def _get_table_spec(table_spec_list, schema):
+        """
+        Parameters
+        table_spec_list:  list of dicts
+        All have table_name entry.  All but first have
+        join_on or join_using entry
+        schema : string
+
+        Returns:  string representation of table spec for create view
+        """
+        n = len(table_spec_list)
+        if n == 0:
+            raise ValueException("no source tables for view")
+
+        table_spec =  '"{schema}".' + table_spec_list[0]['table_name'] + ' '
+        for i in range(n)[1:] :
+            e = table_spec_list[i]
+            next =  ' '.join([e['join_type'], '"{schema}".' + e['table_name']])
+            if 'join_on' in e:
+                next += ' on ' + e['join_on'] + ' '
+            else:
+                if 'join_using' in e:
+                    next += ' using (' + ' '.join(e['join_using']) + ')'
+                else:
+                    raise ValueException('missing join specification')
+            table_spec += next
+        table_spec_fm = table_spec.format(**locals())
+        return table_spec_fm
+        
+
 
     @staticmethod
     def rpn_value(inputs, rpn):
@@ -172,48 +214,58 @@ class DpddView(object):
         
     def view_string(self):
         dbschema = self.dbschema
-        table_spec = self.table_spec
-        if table_spec is None:
-            if len(self.tables) == 1:
-                table_spec = '"{}"."{}"'.format(dbschema, self.tables[0])
-            else:
-                join_list = [ '"{}"."{}"'.format(dbschema, self.tables[0]) ] 
-                for table in self.tables[1:]:
-                    join_list.append('LEFT JOIN "{}"."{}" USING (object_id)'.format(dbschema, table) )
+        # table_spec = self.table_spec
+        # if table_spec is None:
+        #     if len(self.tables) == 1:
+        #         table_spec = '"{}"."{}"'.format(dbschema, self.tables[0])
+        #     else:
+        #         join_list = [ '"{}"."{}"'.format(dbschema, self.tables[0]) ] 
+        #         for table in self.tables[1:]:
+        #             join_list.append('LEFT JOIN "{}"."{}" USING (object_id)'.format(dbschema, table) )
                   
-                table_spec = """
-                """.join(join_list)
+        #         table_spec = """
+        #         """.join(join_list)
 
         dpdd_yaml = DpddYaml(open(self.yaml_path)).parse()
+        self.view_name = dpdd_yaml['view_name']
+        self.table_spec = self._get_table_spec(dpdd_yaml['table_spec'], 
+                                               dbschema)
         if self.yaml_override:
             override_yaml = DpddYaml(open(self.yaml_override)).parse()
-            for i in override_yaml:
-                found = False
-                # If find elt in dpdd_yaml with same DPDDname
-                #   delete
-                #   add override entry instead.
-                # else just add it
-                for j in dpdd_yaml:
-                    if j['DPDDname'] == i['DPDDname']:
-                        found = True
-                        j['NativeInputs'] = i['NativeInputs']
-                        for key in ['Datatype', 'RPN']:
-                            if key in i: j[key] = i[key]
-                        break
+            if 'view_name' in override_yaml:
+                self.view_name = override_yaml['view_name']
+            if 'table_spec' in override_yaml:
+                self.table_spec = self._get_table_spec(override_yaml['table_spec'], dbschema)
 
-                if not found:
-                    new_elt = dict(i)
-                    dpdd_yaml.append(new_elt)
+            if 'columns' in override_yaml:
+                for i in override_yaml['columns']:
+                    found = False
+                    # If find elt in dpdd_yaml with same DPDDname
+                    #   delete
+                    #   add override entry instead.
+                    # else just add it
+                    for j in dpdd_yaml['columns']:
+                        if j['DPDDname'] == i['DPDDname']:
+                            found = True
+                            j['NativeInputs'] = i['NativeInputs']
+                            for key in ['Datatype', 'RPN']:
+                                if key in i: j[key] = i[key]
+                            break
+
+                    if not found:
+                        new_elt = dict(i)
+                        dpdd_yaml['columns'].append(new_elt)
 
 
         fields = []
-        for i in dpdd_yaml:
+        for i in dpdd_yaml['columns']:
             r = self.resolve(i)
             if r: fields += r
             #r = DpddYaml.resolve(i)
             #if r: fields.append(r)
         sFields = """,
         """.join(fields)
+        table_spec = self.table_spec
 
         view_name = self.view_name
         cv = """CREATE VIEW {dbschema}.{view_name} AS ( 
@@ -225,6 +277,7 @@ class DpddView(object):
            )
         """.format(**locals())
         return cv
+
 
 import sys
 if __name__ =='__main__':

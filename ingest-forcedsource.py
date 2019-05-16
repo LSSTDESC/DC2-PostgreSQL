@@ -191,6 +191,7 @@ def create_table(schema, finder, assumptions, dryrun=True):
             except psycopg2.ProgrammingError:
                 bNeedCreating = True
                 db.rollback()
+
     # Now check for view
     with db.cursor() as cursor:
         try:
@@ -205,6 +206,8 @@ def create_table(schema, finder, assumptions, dryrun=True):
         print("View is already there")
     
     if (bNeedCreating or bNeedView) is False:  return False
+
+    if dryrun:  bNeedCreating = True
 
     if bNeedCreating:
         with db.cursor() as cursor:
@@ -236,6 +239,7 @@ def create_table(schema, finder, assumptions, dryrun=True):
                     remaining_tables[name].create(cursor, schema)
             if not dryrun: 
                 db.commit()
+
     
     if bNeedView:     # table was already there, but not view
         if not dryrun:
@@ -259,14 +263,11 @@ def create_view(cursor, schema, dm_schema=3):
 
     """
     yaml_path = os.path.join(os.getenv('DPDD_YAML'),
-                             'nativeforcedsource_to_dpdd.yaml')
+                             'nativeforcedsource_to_view.yaml')
     yaml_override = os.path.join(os.getenv('DPDD_YAML'),
-                                 'nativeforcedsource_to_dpdd_postgres.yaml')
+                                 'nativeforcedsource_to_view_postgres.yaml')
     # would be neater to include view table spec in yaml
-    table_spec = _get_view_table_spec(schema) # unique to forced source data
     view_builder = DpddView(schema,
-                            table_spec = _get_view_table_spec(schema),
-                            view_name = 'forcedsource_dpdd',
                             yaml_path=yaml_path,
                             yaml_override=yaml_override)
     vs = view_builder.view_string()
@@ -276,17 +277,6 @@ def create_view(cursor, schema, dm_schema=3):
         print("Create view command would be:")
         print(vs)
 
-def _get_view_table_spec(schema):
-    join_list = ['"{schema}".position']
-    join_list.append('JOIN "{schema}".forcedsourcenative on object_id = objectid')
-    join_list.append('JOIN "{schema}".ccdvisit using (ccdvisitid)')
-    join_list.append('JOIN "{schema}".dpdd_ref using (object_id)')
-    join_list.append('JOIN "{schema}".dpdd_forced using (object_id)')
-
-    joined = """
-    """.join(join_list)
-    table_spec = joined.format(**locals())
-    return table_spec
 
 def insert_visit(schema, finder, assumptions, visit, dryrun=True):
     """

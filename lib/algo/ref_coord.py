@@ -47,7 +47,7 @@ class Algo_ref_coord(algobase.Algo):
         ]))
 
         fields["extinction_bv"] = sourcetable.Field(
-            "extinction_bv", "Scalar", "", extinction_bv, "E(B-V)"
+            "extinction_bv", "Scalar", "", extinction_bv, "E(B-V)", None
         )
         #print('In ref_coord __init__ fields keys are: ')
         #for k in fields: print(k)
