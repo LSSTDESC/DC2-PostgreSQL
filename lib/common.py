@@ -94,8 +94,9 @@ def path_decompose(path):
     #print("In path_decompose called with path=", path)
     #print("Computed basename=", basename)
     # For LSST forced source filepaths have only 'forced', not 'forced_src'
+    # Except for run 2.1i they *do* have forced_src, so allow for either one
     #m = re.match(r'^(?:calexp|forced_src|meas|ran|forced_src_undeblendedConvolved)-(HSC-\w+|NB-?\w+)-([0-9]+)-([0-9]+),([0-9]+)\.fits(?:\.gz)?$', basename)
-    m = re.match(r'^(?:calexp|forced|meas|ran|forced_src_undeblendedConvolved)-([a-z])-([0-9]+)-([0-9]+),([0-9]+)\.fits(?:\.gz)?$', basename)
+    m = re.match(r'^(?:calexp|forced|forced_src|meas|ran|forced_src_undeblendedConvolved)-([a-z])-([0-9]+)-([0-9]+),([0-9]+)\.fits(?:\.gz)?$', basename)
     if m:
         filter, tract, x, y = m.groups()
         patch = int(x)*100 + int(y)

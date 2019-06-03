@@ -835,18 +835,31 @@ def get_catalog_path(rerunDir, tract, patch, filter, hsc=True, schemaName=None):
         if major == None or (str(major) == '1' and str(minor) == '1'):
             return "{rerunDir}/deepCoadd-results/{filter}/{tract}/{x},{y}/forced-{filter}-{tract}-{x},{y}.fits".format(**locals())
         else:
-            return "{rerunDir}/deepCoadd_results/{filter}_t{tract}_p{x},{y}/forced-{filter}-{tract}-{x},{y}.fits".format(**locals())
+            if str(major) == '2':
+                return "{rerunDir}/deepCoadd-results/{filter}/{tract}/{x},{y}/forced_src-{filter}-{tract}-{x},{y}.fits".format(**locals())
+
+            else:
+                return "{rerunDir}/deepCoadd_results/{filter}_t{tract}_p{x},{y}/forced-{filter}-{tract}-{x},{y}.fits".format(**locals())
 def get_an_existing_catalog_id(rerunDir, schemaName):
     """
     Get any one triple (tract, patch, filter) for which catalog files exist
     """
     pattern = get_catalog_path(rerunDir, "*", "*", "*", False, schemaName)
-    #print('pattern from get_catalog_path is {pattern}'.format(**locals()))
+    print('pattern from get_catalog_path is {pattern}'.format(**locals()))
 
+    cnt = 0
     for catPath in itertools.chain(glob.iglob(pattern), glob.iglob(pattern + ".gz")):
         tract, patch, filter = lib.common.path_decompose(catPath)
+        cnt += 1
+        if cnt < 5:
+            print("tract=",tract, " patch=", patch, " filter=", filter)
 
         refPath = get_ref_path(rerunDir, tract, patch)
+        if cnt < 5: print("refPath: ", refPath)
+        else:
+            print("quitting")
+            exit(0)
+
         if lib.common.path_exists(refPath):
             return tract, patch, filter
 
