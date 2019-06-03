@@ -21,10 +21,15 @@ columns:
   DPDDname: 'magerr_{BAND}'
   RPN: [x2, x1, '_forced:export_magerr(,)']
 
--
-  NativeInputs: ['forcedsourcenative.base_PsfFlux_{FLUX}']
+#-
+#  NativeInputs: ['forcedsourcenative.base_PsfFlux_{FLUX}']
+#  DPDDname: 'mag'
+#  RPN: [x1, '_forced:export_mag()']
+- 
+  NativeInputs: ['forcedsourcenative.base_PsfFlux_{FLUX}', 'ccdvisit.zeropoint']
   DPDDname: 'mag'
-  RPN: [x1, '_forced:export_mag()']
+  Lambda: 'lambda x,y: -2.5 * np.log10(x) + y'
+  RPN: [x2,x1,'c_log10f()',-2.5, '*','+']
 -
   NativeInputs: ['forcedsourcenative.base_PsfFlux_{FLUX}', 'forcedsourcenative.base_PsfFlux_{FLUX}{ERR}' ]
   DPDDname: 'magerr'

@@ -41,6 +41,10 @@ columns:
     Datatype: long
     DPDDname: objectid
 - 
+    NativeInputs:   [ccdvisitid]
+    Datatype: long
+    DPDDname: ccdvisitid
+- 
     NativeInputs: [coord_ra]
     Datatype: double
     DPDDname: ra
@@ -90,10 +94,10 @@ columns:
     NativeInputs: ['forcedsourcenative.base_psfFlux_{FLUX}{ERR}']
     DPDDname: 'psFluxErr'
 - 
-    NativeInputs: ['forcedsourcenative.base_PsfFlux_{FLUX}']
+    NativeInputs: ['forcedsourcenative.base_PsfFlux_{FLUX}', 'ccdvisit.zeropoint']
     DPDDname: 'mag'
-    Lambda: 'lambda x: -2.5 * np.log10(x) + 27.0'
-    RPN: [27.0,x1,'log()',-2.5, '*','+']
+    Lambda: 'lambda x,y: -2.5 * np.log10(x) + y'
+    RPN: [x2,x1,'log()',-2.5, '*','+']
 - 
     NativeInputs: ['forcedsourcenative.base_PsfFlux_{FLUX}', 'forcedsourcenative.base_PsfFlux_{FLUX}{ERR}' ]
     DPDDname: 'magerr'

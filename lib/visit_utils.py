@@ -179,6 +179,9 @@ def ingest_registry(connection, registry_file, schema_name, dry_run=False):
         The connection object to use to modify the CcdVisit table.
     registry_file : str
         The sqlite registry file containing the visit information.
+    schema_name : str
+        Will be prepended to table name ('ccdvisit')
+    dry_run : bool
     """
     registry = sqlite3.connect(registry_file)
     query = """select dateObs, visit, filter, raftName, detectorName,
@@ -209,8 +212,7 @@ def ingest_registry(connection, registry_file, schema_name, dry_run=False):
                 print("Query:  ")
                 print(query)
                 if cnt > 5: return
-                #cnt += 1
-                print("query:", query)
+                #print("query:", query)
             else:
                 try:
                     cursor.execute(query)
@@ -221,7 +223,8 @@ def ingest_registry(connection, registry_file, schema_name, dry_run=False):
         print('Total count of inserted rows: ', cnt)
         connection.commit() 
 
-def ingest_calexp_info(connection, repo, project):
+def ingest_calexp_info(connection, repo, schema_name, dry_run=False,
+                       min_visit=0, max_visit=100000000):
     """
     Extract information such as zeroPoint, seeing, sky background, sky
     noise, etc., from the calexp products and insert the values into
@@ -233,164 +236,86 @@ def ingest_calexp_info(connection, repo, project):
         The connection object to use to modify the CcdVisit table.
     repo : str
         The path the output data repository used by the Stack.
-    project : str
-        The name of the project for which the Level 2 analyses
-        run.  This is used to differentiate different projects in
-        the MySQL tables that may have colliding primary keys, e.g.,
-        various runs of Twinkles, or PhoSim Deep results.
+    schema_name : str
+        Will be prepended to table name ('ccdvisit')
+    min_visit :   int
+        Only process visits with id at least this big
+    max_visit :   int
+        If not None, only process for visits with id <= max_visit
     """
     # Use the Butler to find all of the visit/sensor combinations.
     butler = dp.Butler(repo)
     datarefs = butler.subset('calexp')
+
+    # Possible alternate approach: 
+    # query ccdvisit table to get list of visits between min_visit and max_visit
+    # for each visit
+    #    visitrefs = butler.subset('calexp', dataId={'visit' : the_visit})
+    #    loop over these refs
+    #    commit
     num_datarefs = len(datarefs)
     print('Ingesting %i visit/sensor combinations' % num_datarefs)
     sys.stdout.flush()
     nrows = 0
-    for dataref in datarefs:
-        if nrows % int(num_datarefs/20) == 0:
-            sys.stdout.write('.')
-            sys.stdout.flush()
-        calexp = dataref.get('calexp')
-        calexp_bg = dataref.get('calexpBackground')
-        ccdVisitId = make_ccdVisitId(dataref.dataId['visit'],
-                                     dataref.dataId['raft'],
-                                     dataref.dataId['sensor'])
+    with connection.cursor() as cursor:
+        for dataref in datarefs:
+            if dataref.dataId['visit'] < min_visit : continue
+            if dataref.dataId['visit'] >  max_visit : continue
+            if nrows % int(num_datarefs/20) == 0:
+                sys.stdout.write('.')
+                sys.stdout.flush()
+            calexp = dataref.get('calexp')
+            calexp_bg = dataref.get('calexpBackground')
+            ccdVisitId = make_ccdVisitId(dataref.dataId['visit'],
+                                         dataref.dataId['raftName'],
+                                         dataref.dataId['detectorName'])
 
-        # Compute zeroPoint, seeing, skyBg, skyNoise column values.
-        try:
-            zeroPoint = calexp.getCalib().getFluxMag0()[0]
-        except:
-            continue
-        # For the psf_fwhm (=seeing) calculation, see
-        # https://github.com/lsst/meas_deblender/blob/master/python/lsst/meas/deblender/deblend.py#L227
-        pixel_scale = calexp.getWcs().pixelScale().asArcseconds()
-        seeing = (calexp.getPsf().computeShape().getDeterminantRadius()
-                  *2.35*pixel_scale)
-        # Retrieving the nominal background image is computationally
-        # expensive and just returns an interpolated version of the
-        # stats_image (see
-        # https://github.com/lsst/afw/blob/master/src/math/BackgroundMI.cc#L87),
-        # so just get the stats image.
-        #bg_image = calexp_bg.getImage()
-        bg_image = calexp_bg[0][0].getStatsImage()
-        skyBg = afwMath.makeStatistics(bg_image, afwMath.MEDIAN).getValue()
-        skyNoise = afwMath.makeStatistics(calexp.getMaskedImage(),
-                                          afwMath.STDEVCLIP).getValue()
-        query = """update CcdVisit set zeroPoint=%(zeroPoint)15.9e,
-                   seeing=%(seeing)15.9e,
-                   skyBg=%(skyBg)15.9e, skyNoise=%(skyNoise)15.9e
-                   where ccdVisitId=%(ccdVisitId)i and
-                   project='%(project)s'""" % locals()
-        connection.apply(query)
-        nrows += 1
-    print('!')
+            # Compute zeroPoint, seeing, skyBg, skyNoise column values.
+            try:
+                zeroPoint = calexp.getPhotoCalib().instFluxToMagnitude(1)
+            except:
+                continue
+            # For the psf_fwhm (=seeing) calculation, see
+            # https://github.com/lsst/meas_deblender/blob/master/python/lsst/meas/deblender/deblend.py#L227
+            try:
+                pixel_scale = calexp.getWcs().getPixelScale().asArcseconds()
+                seeing = (calexp.getPsf().computeShape().getDeterminantRadius()
+                          *2.35*pixel_scale)
+            except:
+                seeing = -1000.0
+            # Retrieving the nominal background image is computationally
+            # expensive and just returns an interpolated version of the
+            # stats_image (see
+            # https://github.com/lsst/afw/blob/master/src/math/BackgroundMI.cc#L87),
+            # so just get the stats image.
+            #bg_image = calexp_bg.getImage()
+            try:
+                bg_image = calexp_bg[0][0].getStatsImage()
+                skyBg = afwMath.makeStatistics(bg_image, afwMath.MEDIAN).getValue()
+            except:
+                skyBg = -1000.0
+            try:
+                skyNoise = afwMath.makeStatistics(calexp.getMaskedImage(),
+                                                  afwMath.STDEVCLIP).getValue()
+            except:
+                skyNoise = -1000.0
 
-def ingest_ForcedSource_data(connection, catalog_file, ccdVisitId,
-                             flux_calibration, project,
-                             psFlux='base_PsfFlux_flux',
-                             psFlux_Sigma='base_PsfFlux_fluxSigma',
-                             flags=0, fits_hdunum=1, csv_file='temp.csv',
-                             cleanup=True):
-    """
-    Load the forced source catalog data into the ForcedSource table.
-    Create a temporary csv file to take advantage of the efficient
-    'LOAD DATA LOCAL INFILE' facility.
-    Parameters
-    ----------
-    connection : desc.pserv.DbConnection
-        The connection object to use to modify the CcdVisit table.
-    catalog_file : str
-        The path to the catalog file produced by the forcedPhotCcd.py
-        task.
-    ccdVisitId : int
-        Unique identifier of the visit-raft-sensor combination.
-    flux_calibration : function
-        A callback function to convert from ADU to nanomaggies. Usually,
-        this is a desc.pserv.FluxCalibrator object.
-    project : str
-        The name of the project for which the Level 2 analyses
-        run.  This is used to differentiate different projects in
-        the MySQL tables that may have colliding primary keys, e.g.,
-        various runs of Twinkles, or PhoSim Deep results.
-    psFlux : str, optional
-        The column name from the forced source catalog to use for the
-        point source flux in the ForcedSource table.
-        Default: 'base_PsfFlux_flux'
-    psFlux_Sigma : str, optional
-        The column name from the forced source catalog to use for the
-        uncertainty in the point source flux in the ForcedSource table.
-        Default: 'base_PsfFlux_fluxSigma'
-    flags : int, optional
-        Value to insert in the flag column in the ForcedSource table.
-        This is not really used.  Default: 0
-    fits_hdunum : int, optional
-        The HDU number of the binary table containing the forced source
-        data.
-    csv_file : str, optional
-        The file name to use for the csv file written to use with the
-        'LOAD DATA LOCAL INFILE' statement. Default: 'temp.csv'
-    cleanup : bool, optional
-        Flag to delete the csv_file after loading the data. Default: True
-    """
-    column_mapping = OrderedDict((('objectId', 'objectId'),
-                                  ('ccdVisitId', ccdVisitId),
-                                  ('psFlux', psFlux),
-                                  ('psFlux_Sigma', psFlux_Sigma),
-                                  ('flags', flags),
-                                  ('project', project)))
-    # Callbacks to apply calibration and convert to nanomaggies.
-    callbacks = dict(((psFlux, flux_calibration),
-                      (psFlux_Sigma, flux_calibration)))
-    ####create_csv_file_from_fits(catalog_file, fits_hdunum, csv_file,
-    ####                          column_mapping=column_mapping,
-    ####                          callbacks=callbacks)
-    ####connection.load_csv('ForcedSource', csv_file)
-    ####if cleanup:
-    ####    os.remove(csv_file)
+            query = """update "%(schema_name)s".ccdvisit
+                       set zeroPoint=%(zeroPoint)15.9e,
+                       seeing=%(seeing)15.9e,
+                       skyBg=%(skyBg)15.9e, skyNoise=%(skyNoise)15.9e
+                       where ccdVisitId=%(ccdVisitId)i """ % locals()  
+            if dry_run:
+                print('Query for row ', nrows, ': ')
+                print(query)
+                if nrows > 5: return
+            else:
+                try: 
+                    cursor.execute(query)
+                except Exception as eobj:
+                    print("query:", query)
+                    raise eobj
+            nrows += 1
+    print('Total count of updated rows: ', nrows)
+    connection.commit()
 
-# def ingest_Object_data(connection, catalog_file, project):
-#     """
-#     Ingest the reference catalog from the merged coadds.
-
-#     Parameters
-#     ----------
-#     connection : desc.pserv.DbConnection
-#         The connection object to use to modify the Object table.
-#     catalog_file : str
-#         The path to the file of the merged coadd catalog file produced
-#         by Level 2 analysis.
-#     project : str
-#         The name of the project for which the Level 2 analyses
-#         run.  This is used to differentiate different projects in
-#         the MySQL tables that may have colliding primary keys, e.g.,
-#         various runs of Twinkles, or PhoSim Deep results.
-#     """
-#     data = fits.open(catalog_file)[1].data
-#     nobjs = len(data['id'])
-#     print("Ingesting %i objects" % nobjs)
-#     sys.stdout.flush()
-#     nrows = 0
-#     for objectId, ra, dec, parent, extendedness \
-#             in zip(data['id'],
-#                    data['coord_ra'],
-#                    data['coord_dec'],
-#                    data['parent'],
-#                    data['base_ClassificationExtendedness_value']):
-#         if nrows % int(nobjs/20) == 0:
-#             sys.stdout.write('.')
-#             sys.stdout.flush()
-#         ra_val = ra*180./np.pi
-#         dec_val = dec*180./np.pi
-#         if np.isnan(extendedness):
-#             extendedness = 1.
-#         query = """insert into Object
-#                    (objectId, parentObjectId, psRa, psDecl, extendedness,
-#                    project)
-#                    values (%i, %i, %17.9e, %17.9e, %17.9e, '%s')
-#                    on duplicate key update psRa=%17.9e, psDecl=%17.9e,
-#                    extendedness=%17.9e""" \
-#             % (objectId, parent, ra_val, dec_val, extendedness, project,
-#                ra_val, dec_val, extendedness)
-#         connection.apply(query)
-#         nrows += 1
-#     print("!")

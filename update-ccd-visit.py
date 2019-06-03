@@ -3,7 +3,7 @@ import sys
 import itertools
 import psycopg2
 
-from lib.visit_utils import ingest_registry, create_table, ingest_calexp_info 
+from lib.visit_utils import ingest_calexp_info 
 
 default_db_server = {
     'dbname': os.environ.get("USER", "postgres"),
@@ -17,24 +17,26 @@ def main():
     print('Invocation: ' + cmdline)
     parser = argparse.ArgumentParser(
         fromfile_prefix_chars='@',
-        description='Create CcdVisit table from sqlite registry.')
+        description='Update CcdVisit table with calexp information')
 
-    parser.add_argument('regDir', 
-                        help="Directory containing registry.sqlite3")
     parser.add_argument('schemaName',
                         help="DB schema name in which to load data")
     parser.add_argument('--dry-run', dest='dryrun', action='store_true',
                         help="Do not write to db. ", 
                         default=False)
-    parser.add_argument('--calexp-only', dest='calexp_only',action='store_true',
-                        help="Assumes table with registry info exists already",
-                        default=False)
     parser.add_argument('--repodir', dest='repodir', 
                         help="where to find calexp data", default=None)
-    parser.add_argument('--sql-dir', dest='sqldir', default='.')
     parser.add_argument("--db-server", metavar="key=value", nargs="+", 
                         action="append", 
                         help="DB connect parms. Must come after reqd args.")
+    #parser.add_argument('--visits', dest='visits', type=int, nargs='+', 
+    #                    help="visits for which calexp info will be inserted")
+    parser.add_argument('--min-visit', dest='min_visit', type=int,
+                        help='insert data only for this visit id and beyond',
+                        default=0)
+    parser.add_argument('--max-visit', dest='max_visit', type=int,
+                        help='insert data only for visits <= this value',
+                        default=100000000)
 
     args = parser.parse_args()
 
@@ -44,16 +46,9 @@ def main():
     
     connection = psycopg2.connect(**db_server)
 
-    if  args.calexp_only==False:
-        create_table(connection, 'CcdVisit', args.schemaName, args.sqldir, 
-                     args.dryrun)
-
-        ingest_registry(connection, 
-                        os.path.join(args.regDir, 'registry.sqlite3'),
-                        args.schemaName, args.dryrun)
     if args.repodir is not None:
         ingest_calexp_info(connection, args.repodir, args.schemaName, 
-                           args.dryrun)
+                           args.dryrun, args.min_visit, args.max_visit)
 
 if __name__ == "__main__":
     main()
