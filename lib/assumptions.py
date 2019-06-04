@@ -1,5 +1,6 @@
 # Copyright notice??
 from yaml import load as yload
+from yaml import FullLoader
 import re
 from .misc import PoppingOrderedDict
 from .misc import warning
@@ -45,7 +46,7 @@ class Assumptions(object):
         if self.parsed:  return self.parsed
 
         with open(self.inf) as f:
-            self.parsed = yload(f)
+            self.parsed = yload(f, Loader=FullLoader)
         self._verify()
 
     def _verify(self):

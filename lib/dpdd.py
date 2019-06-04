@@ -1,5 +1,6 @@
 # Copyright notice??
 from yaml import load as yload
+from yaml import FullLoader
 import re
 
 class DpddYaml(object):
@@ -35,7 +36,7 @@ class DpddYaml(object):
                     if type(i) != type({}):
                         raise TypeError("table spec item is not a dict")
 
-        y = yload(self.inf)
+        y = yload(self.inf, Loader=FullLoader)
         if type(y) != type({}):
             raise TypeError("Input is not a dict")
         _verify_columns(y)
