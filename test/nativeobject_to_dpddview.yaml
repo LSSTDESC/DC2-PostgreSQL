@@ -19,11 +19,11 @@ table_spec :
 -
   table_name : dpdd_ref
   join_using : [object_id]
-  join_type  : 'inner join'
+  join_type  : ' left join'
 -
   table_name : dpdd_forced
   join_using : [object_id]
-  join_type  : 'inner join'
+  join_type  : ' left join'
 columns:
 - 
     NativeInputs:   [id]
@@ -68,7 +68,7 @@ columns:
     NativeInputs: [base_ClassificationExtendedness_value]
     DPDDname:  extendedness
 -
-    NativeInputs: ['base_Blendedness_abs_{FLUX}']
+    NativeInputs: ['base_Blendedness_abs']
     DPDDname: blendedness
 -
     NativeInputs: [ext_shapeHSM_HsmSourceMoments_xx]
