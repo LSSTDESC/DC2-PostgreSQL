@@ -1,4 +1,4 @@
-# Copyright (C) 2016-2018  Sogo Mineo
+# Copyright (C) 2019  LSST Dark Energy Science Collaboration (DESC)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
 # Adapted from dbtable.py
 from . import common
 from . import config
-#from .assumptions import Assumptions
+
 from .sourcetable import Field
 import numpy as np
 
