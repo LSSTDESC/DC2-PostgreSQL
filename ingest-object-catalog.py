@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (C) 2016-2018  Sogo Mineo
+# Copyright (C) 2016-2019  Sogo Mineo
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,6 +14,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# This program has been heavily adapted for use with DESC simulated data by
+# LSST Dark Energy Science Collaboration (DESC)
 
 import numpy
 import psycopg2

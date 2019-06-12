@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright (C) 2016-2018  Sogo Mineo
+# Copyright (C) 2016-2019  Sogo Mineo
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
