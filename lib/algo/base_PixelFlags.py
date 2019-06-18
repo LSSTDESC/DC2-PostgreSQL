@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from .. import algobase
-
+from .. import sourcetable
 
 class Algo_base_PixelFlags(algobase.Algo):
     renamerules = [
@@ -24,4 +24,21 @@ class Algo_base_PixelFlags(algobase.Algo):
     ]
 
     def __init__(self, sourceTable):
-        self.sourceTable = sourceTable.cutout_subtable("base_PixelFlags_")
+        temp_sourceTable = sourceTable.cutout_subtable("base_PixelFlags_")
+
+        # create 'good' flag out of a collection of pixel flags
+        fields = temp_sourceTable.fields
+        notgood = fields["base_PixelFlags_flag_edge"].data
+        for sfx in ["interpolatedCenter","saturatedCenter","crCenter",
+                    "bad", "suspectCenter", "clipped"]:
+            notgood = notgood.__or__(fields["base_PixelFlags_flag_" + sfx].data)
+        good = notgood.__eq__(0)
+        fields["good"] = sourcetable.Field("good", "Scalar", "", good,
+                                           "Good pixel flags", None)
+
+        self.sourceTable = sourcetable.SourceTable(fields, sourceTable.slots,
+                                                   sourceTable.fitsheader)
+
+        
+        
+        

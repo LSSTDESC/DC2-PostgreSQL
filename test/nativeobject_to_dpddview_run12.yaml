@@ -68,8 +68,8 @@ columns:
     NativeInputs: [base_ClassificationExtendedness_value]
     DPDDname:  extendedness
 -
-    NativeInputs: ['base_Blendedness_abs']  #  for run 2.1 and beyond
-    # NativeInputs: ['base_Blendedness_abs_{FLUX}'] 
+    # NativeInputs: ['base_Blendedness_abs']  for run 2.1 and beyond
+    NativeInputs: ['base_Blendedness_abs_{FLUX}']
     DPDDname: blendedness
 -
     NativeInputs: [ext_shapeHSM_HsmSourceMoments_xx]
@@ -158,7 +158,6 @@ columns:
     NativeInputs: [good]
     DPDDname:     good
     Datatype:     flag
-
 -
     NativeInputs: [good, deblend_skipped]
     DPDDname:     clean
