@@ -104,18 +104,16 @@ columns:
     Lambda: 'lambda x,y: (2.5 * y) / (x* np.log10(x))'
     RPN: [x1,'log()',x1, '*', 2.5,x2,'*','/']
 -
-    NativeInputs: [dpdd_ref.base_PixelFlags_flag_edge,dpdd_ref.base_PixelFlags_flag_interpolatedCenter,dpdd_ref.base_PixelFlags_flag_saturatedCenter,dpdd_ref.base_PixelFlags_flag_crCenter,dpdd_ref.base_PixelFlags_flag_bad,dpdd_ref.base_PixelFlags_flag_suspectCenter,dpdd_ref.base_PixelFlags_flag_clipped]
+    NativeInputs: [dpdd_ref.good]
     DPDDname:     good
     Datatype:     flag
-    RPN:          [x1, x2, 'or', x3, 'or', x4, 'or', x5, 'or', x6, 'or', x7, 'or', 'not']
 -
-    NativeInputs: [forcedsourcenative.base_PixelFlags_flag_edge,forcedsourcenative.base_PixelFlags_flag_interpolatedCenter,forcedsourcenative.base_PixelFlags_flag_saturatedCenter,forcedsourcenative.base_PixelFlags_flag_crCenter,forcedsourcenative.base_PixelFlags_flag_bad,forcedsourcenative.base_PixelFlags_flag_suspectCenter]
+    NativeInputs: [forcedsourcenative.forcedsourcevisit_good]
     DPDDname:     forcedsourcevisit_good
     Datatype:     flag
-    RPN:          [x1, x2, 'or', x3, 'or', x4, 'or', x5, 'or', x6, 'or', 'not']
 -
-    NativeInputs: [dpdd_ref.base_PixelFlags_flag_edge,dpdd_ref.base_PixelFlags_flag_interpolatedCenter,dpdd_ref.base_PixelFlags_flag_saturatedCenter,dpdd_ref.base_PixelFlags_flag_crCenter,dpdd_ref.base_PixelFlags_flag_bad,dpdd_ref.base_PixelFlags_flag_suspectCenter,dpdd_ref.base_PixelFlags_flag_clipped, deblend_skipped]
+    NativeInputs: [dpdd_ref.good,  deblend_skipped]
     DPDDname:     clean
     Datatype:     flag
-    RPN:          [x1, x2, 'or', x3, 'or', x4, 'or', x5, 'or', x6, 'or', x7, 'or', x8, 'or', 'not']
+    RPN:          [x1, x2, 'not', 'and']
 
