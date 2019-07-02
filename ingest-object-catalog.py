@@ -966,9 +966,11 @@ def extract_schema_fields(schemaName):
     if schemaName is None: 
         return(None, None, None)
 
-    pat = '\A[-_a-zA-Z]+([0-9])([0-9]+)(i|p)(_[a-z]+[a-z,0-9]*)?\Z'
+    pat = '\A[-_a-zA-Z]+([0-9])([0-9]+)(i|p)(_[a-z]+[\-_a-z0-9]*)?\Z'
     result = re.match(pat, schemaName)
     if result:
+        #print("Groups 1,2,3: ", result.group(1), result.group(2), result.group(3))
+        #sys.stdout.flush()
         return(result.group(1), result.group(2), result.group(3))
     else:
         return(None, None, None)
