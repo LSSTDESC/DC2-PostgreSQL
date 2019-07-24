@@ -539,8 +539,9 @@ def get_ref_schema_from_file(path):
     #   New table names:
     #       position (= old _forced:position)
     #       dpdd_ref (remaining quantitites from ref used in dpdd)
-    #       misc_ref  (everything else in ref)
     #       dpdd_forced (multiband quantities in dpdd)
+    # everything else will be ignored.  Was in tables
+    #       misc_ref  (everything else in ref)    
     #       forced2
     #       forced3
     #       forced4
@@ -554,20 +555,20 @@ def get_ref_schema_from_file(path):
         ["base_SdssCentroid", "base_PsfFlux","base_ClassificationExtendedness",
          "base_Blendedness","base_PixelFlags", "ext_shapeHSM", 
          "base_SdssShape", "modelfit_CModel", "deblend", ])
-    add("misc_ref",
-        ["base_CircularApertureFlux",
-         "base_FootprintArea",
-         "base_GaussianCentroid",
-         "base_GaussianFlux",
-         "base_InputCount",
-         "base_LocalBackground",
-         "base_NaiveCentroid",
-         "base_Variance",
-         "calib",
-         "ext_convolved_ConvolvedFlux",
-         "ext_photometryKron_KronFlux",
-         "footprint",
-         "modelfit_DoubleShapeletPsfApprox",])
+    # add("misc_ref",
+    #     ["base_CircularApertureFlux",
+    #      "base_FootprintArea",
+    #      "base_GaussianCentroid",
+    #      "base_GaussianFlux",
+    #      "base_InputCount",
+    #      "base_LocalBackground",
+    #      "base_NaiveCentroid",
+    #      "base_Variance",
+    #      "calib",
+    #      "ext_convolved_ConvolvedFlux",
+    #      "ext_photometryKron_KronFlux",
+    #      "footprint",
+    #      "modelfit_DoubleShapeletPsfApprox",])
 
     if algos:
         print("remaining algos:")
@@ -758,31 +759,32 @@ def get_catalog_schema_from_file(path, object_id):
         "base_PsfFlux",
     ])
 
-    add("forced2", [
-        "base_GaussianFlux",
-        "ext_photometryKron_KronFlux",   # not in lsst 1.1 data
-        "modelfit_DoubleShapeletPsfApprox",   # not in lsst 1.1 data
-        "undeblended_base_PsfFlux",
-        "undeblended_ext_photometryKron_KronFlux",  # not in lsst 1.1 data
-    ])
+    #  No longer keep stuff unrelated to dpdd
+    # add("forced2", [
+    #     "base_GaussianFlux",
+    #     "ext_photometryKron_KronFlux",   # not in lsst 1.1 data
+    #     "modelfit_DoubleShapeletPsfApprox",   # not in lsst 1.1 data
+    #     "undeblended_base_PsfFlux",
+    #     "undeblended_ext_photometryKron_KronFlux",  # not in lsst 1.1 data
+    # ])
 
-    add("forced3", [
-        "base_CircularApertureFlux",
-        "undeblended_base_CircularApertureFlux",   # not in lsst 1.1 data
-        "base_TransformedCentroid",
-        "base_TransformedShape",
-        "multi_coord",
-    ])
+    # add("forced3", [
+    #     "base_CircularApertureFlux",
+    #     "undeblended_base_CircularApertureFlux",   # not in lsst 1.1 data
+    #     "base_TransformedCentroid",
+    #     "base_TransformedShape",
+    #     "multi_coord",
+    # ])
 
     # Put this back in for Run1.2
     # NOTE:  This code will no longer work for 1.1
-    add("forced4", [
-        "ext_convolved_ConvolvedFlux",
-    ])
+    # add("forced4", [
+    #     "ext_convolved_ConvolvedFlux",
+    # ])
 
-    add("forced5", [
-        "undeblended_ext_convolved_ConvolvedFlux",
-    ])
+    # add("forced5", [
+    #     "undeblended_ext_convolved_ConvolvedFlux",
+    # ])
 
     if algos:
         print("remaining algos:")

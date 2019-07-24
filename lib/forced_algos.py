@@ -46,41 +46,42 @@ ref_algos = PoppingOrderedDict(
             "ext_shapeHSM",
             "base_PixelFlags",
             "modelfit_CModel",
-            "base_CircularApertureFlux",
-            "base_FootprintArea",
-            "base_GaussianCentroid",
-            "base_GaussianFlux",
-            "base_InputCount",
-            "base_LocalBackground",
-            "base_NaiveCentroid",
+            #"base_CircularApertureFlux",
+            #"base_FootprintArea",
+            #"base_GaussianCentroid",
+            #"base_GaussianFlux",
+            #"base_InputCount",
+            #"base_LocalBackground",
+            #"base_NaiveCentroid",
             "base_SdssShape",
-            "base_Variance",
-            "calib",
+            #"base_Variance",
+            #"calib",
             "deblend",
-            "ext_convolved_ConvolvedFlux",
-            "ext_photometryKron_KronFlux",
-            "footprint",
-            "modelfit_DoubleShapeletPsfApprox",
+            #"ext_convolved_ConvolvedFlux",
+            #"ext_photometryKron_KronFlux",
+            #"footprint",
+            #"modelfit_DoubleShapeletPsfApprox",
     )
 )
 
-ref_algos_ignored = [ ]    #none
-    # "base_CircularApertureFlux_",
-    # "base_FootprintArea_",
-    # "base_GaussianCentroid_",
-    # "base_GaussianFlux_",
-    # "base_InputCount_",
-    # "base_LocalBackground_",
-    # "base_NaiveCentroid_",
+#Ignore everything unrelated to dpdd
+ref_algos_ignored = [
+    "base_CircularApertureFlux_",
+    "base_FootprintArea_",
+    "base_GaussianCentroid_",
+    "base_GaussianFlux_",
+    "base_InputCount_",
+    "base_LocalBackground_",
+    "base_NaiveCentroid_",
     # "base_PixelFlags_flag_",       # ignore all but ths summary flag base_PixelFlags
     # "base_SdssCentroid_",
     # "base_SdssShape_",
     # "base_SdssCentroid_flag_",     # Only flag we keep is summary flag
-    # "base_Variance_",
-    # "calib_",                  # not in for LSST run1.1; is in run1.2
+    "base_Variance_",
+    "calib_",                  # not in for LSST run1.1; is in run1.2
     # "deblend_",
-    # "ext_convolved_ConvolvedFlux_",
-    # "ext_photometryKron_KronFlux_", # not in for LSST run1.1; is in 1.2
+    "ext_convolved_ConvolvedFlux_",
+    "ext_photometryKron_KronFlux_", # not in for LSST run1.1; is in 1.2
     # "ext_shapeHSM_HsmPsfMoments_",
     # "ext_shapeHSM_HsmShapeRegauss_",
     # "ext_shapeHSM_HsmSourceMomentsRound_", # not in for LSST run1.1; is in 1.2
@@ -88,38 +89,38 @@ ref_algos_ignored = [ ]    #none
     # "ext_shapeHSM_HsmShapeKsb_",                # added for LSST
     # "ext_shapeHSM_HsmShapeLinear_",             # added for LSST
     # "ext_shapeHSM_HsmSourceMoments_flag_",      # keep only summary flag
-    # "footprint",
+    "footprint",
     # "modelfit_CModel_",
-    # "modelfit_DoubleShapeletPsfApprox_",
+    "modelfit_DoubleShapeletPsfApprox_",
     # #"subaru_FilterFraction_",                 # doesn't exist for LSST
-    #]
+    ]
 
 # Associate column class name/prefix (e.g., 'detect') with package which
 # handles it.
 forced_algos = PoppingOrderedDict(
     (_name, _import_algo(_name))
     for _name in (
-            "base_CircularApertureFlux",
+            #"base_CircularApertureFlux",
             "base_ClassificationExtendedness",  # only in ref for LSST run1.1
-            "base_GaussianFlux",
+            #"base_GaussianFlux",
             "base_InputCount",
             "base_LocalBackground",
             "base_PixelFlags",
             "base_PsfFlux",
             "base_SdssCentroid",
             "base_SdssShape",
-            "base_TransformedCentroid",
-            "base_TransformedShape",
+            #"base_TransformedCentroid",
+            #"base_TransformedShape",
             "base_Variance",
-            "ext_convolved_ConvolvedFlux", #  in forced for 1.2; not 1.1
-            "ext_photometryKron_KronFlux", # not in LSST 1.1; is in 1.2
+            #"ext_convolved_ConvolvedFlux", #  in forced for 1.2; not 1.1
+            #"ext_photometryKron_KronFlux", # not in LSST 1.1; is in 1.2
             "modelfit_CModel",
-            "modelfit_DoubleShapeletPsfApprox",
-            "undeblended_base_PsfFlux",        # Not in LSST Run1.1; in 1.2
-            "undeblended_ext_photometryKron_KronFlux", # in 1.2, not 1.1
-            "undeblended_ext_convolved_ConvolvedFlux",
-            "undeblended_base_CircularApertureFlux",   # in 1.2, not 1.1
-            "multi_coord",
+            #"modelfit_DoubleShapeletPsfApprox",
+            #"undeblended_base_PsfFlux",        # Not in LSST Run1.1; in 1.2
+            #"undeblended_ext_photometryKron_KronFlux", # in 1.2, not 1.1
+            #"undeblended_ext_convolved_ConvolvedFlux",
+            #"undeblended_base_CircularApertureFlux",   # in 1.2, not 1.1
+            #"multi_coord",
             #"coord",
             #"parent",
             #"deblend_nChild",
@@ -133,8 +134,21 @@ forced_algos_ignored = [
     #"coord",
     #"parent",
     #"deblend_nChild",
-    #"base_TransformedCentroid_",
-    #"base_TransformedShape_",
-    #"undeblended_ext_convolved_ConvolvedFlux_", # add for LSST 1.2
+    "base_TransformedCentroid_",
+    "base_TransformedShape_",
+    "undeblended_ext_convolved_ConvolvedFlux_", # add for LSST 1.2
     "modelfit_GeneralShapeletPsfApprox_",       # added for LSST
+    "base_GaussianFlux_",
+    "ext_photometryKron_KronFlux_",
+    "modelfit_DoubleShapeletPsfApprox_",
+    "undeblended_base_PsfFlux_",
+    "undeblended_ext_photometryKron_KronFlux_",
+    "base_CircularApertureFlux_",
+    "undeblended_base_CircularApertureFlux_",
+    "coord_ra",
+    "coord_dec",
+    "parent",
+    "deblend_nChild",
+    "ext_convolved_ConvolvedFlux_",
+    "undeblended_ext_convolved_ConvolvedFlux",
 ]
