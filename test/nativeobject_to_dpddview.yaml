@@ -93,25 +93,31 @@ columns:
 -
     NativeInputs: [base_SdssShape_psf_xy]
     DPDDname:   IxyPSF
--
-    NativeInputs: ['{BAND}_modelfit_CModel_{FLUX}']
-    DPDDname: 'mag_{BAND}_cModel'
-    Lambda: 'lambda x: -2.5 * np.log10(x) + 27.0'
-    RPN: [27.0,x1,'log()',-2.5, '*','+']
-    #RPN: [x1, '_forced:export_mag()']
--
-    NativeInputs: ['{BAND}_modelfit_CModel_{FLUX}', 
-                   '{BAND}_modelfit_CModel_{FLUX}{ERR}']
-    DPDDname: 'magerr_{BAND}_cModel'
-    Lambda: 'lambda x,y: (2.5 * y) / (x* np.log10(x))'
-    RPN: [x1,'log()',x1, '*', 2.5,x2,'*','/']
-    # RPN: [x2, x1, '_forced:export_magerr(,)'] 
+# -
+#     NativeInputs: ['{BAND}_modelfit_CModel_{FLUX}']
+#     DPDDname: 'mag_{BAND}_cModel'
+#     Lambda: 'lambda x: -2.5 * np.log10(x) + 27.0'
+#     RPN: [27.0,x1,'log()',-2.5, '*','+']
+#     #RPN: [x1, '_forced:export_mag()']
+# -
+#     NativeInputs: ['{BAND}_modelfit_CModel_{FLUX}', 
+#                    '{BAND}_modelfit_CModel_{FLUX}{ERR}']
+#     DPDDname: 'magerr_{BAND}_cModel'
+#     Lambda: 'lambda x,y: (2.5 * y) / (x* np.log(10))'
+#     RPN: [x1,'log()',x1, '*', 2.5,x2,'*','/']
+#     # RPN: [x2, x1, '_forced:export_magerr(,)'] 
 -
     NativeInputs: ['{BAND}_modelfit_CModel_{FLUX}',
                    '{BAND}_modelfit_Cmodel_{FLUX}{ERR}']
     DPDDname: 'snr_{BAND}_cModel'
     Lamda:  'lambda x,y: np.divide(x,y)' 
     RPN:      [x2,x1,'/']
+-
+    NativeInputs: ['{BAND}_mag_cmodel']
+    DPDDname: 'mag_{BAND}_CModel'
+-
+    NativeInputs: ['{BAND}_magerr_cmodel']
+    DPDDname: 'magerr_{BAND}_CModel'
 - 
     NativeInputs: ['{BAND}_base_PsfFlux_{FLUX}']
     DPDDname: 'psFlux_{BAND}'
@@ -121,18 +127,24 @@ columns:
 -
     NativeInputs: ['{BAND}_base_psfFlux_{FLUX}{ERR}']
     DPDDname: 'psFluxErr_{BAND}'
-- 
-    NativeInputs: ['{BAND}_base_PsfFlux_{FLUX}']
+#- 
+#    NativeInputs: ['{BAND}_base_PsfFlux_{FLUX}']
+#    DPDDname: 'mag_{BAND}'
+#    Lambda: 'lambda x: -2.5 * np.log10(x) + 27.0'
+#    RPN: [27.0,x1,'log()',-2.5, '*','+']
+#    #RPN: [x1, '_forced:export_mag()']
+#- 
+#    NativeInputs: ['{BAND}_base_PsfFlux_{FLUX}', '{BAND}_base_PsfFlux_{FLUX}{ERR}' ]
+#    DPDDname: 'magerr_{BAND}'
+#    Lambda: 'lambda x,y: (2.5 * y) / (x* np.ln(10))'
+#    RPN: [x1,'log()',x1, '*', 2.5,x2,'*','/']
+#    #RPN: [x2, x1, '_forced:export_magerr(,)'] 
+-
+    NativeInputs: ['{BAND}_mag']
     DPDDname: 'mag_{BAND}'
-    Lambda: 'lambda x: -2.5 * np.log10(x) + 27.0'
-    RPN: [27.0,x1,'log()',-2.5, '*','+']
-    #RPN: [x1, '_forced:export_mag()']
-- 
-    NativeInputs: ['{BAND}_base_PsfFlux_{FLUX}', '{BAND}_base_PsfFlux_{FLUX}{ERR}' ]
+-
+    NativeInputs: ['{BAND}_magerr']
     DPDDname: 'magerr_{BAND}'
-    Lambda: 'lambda x,y: (2.5 * y) / (x* np.log10(x))'
-    RPN: [x1,'log()',x1, '*', 2.5,x2,'*','/']
-    #RPN: [x2, x1, '_forced:export_magerr(,)'] 
 -
     NativeInputs: ['{BAND}_base_SdssShape_flag']
     DPDDname: 'I_flag_{BAND}'
