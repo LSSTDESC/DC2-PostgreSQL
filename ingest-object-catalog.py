@@ -53,11 +53,13 @@ def main():
     parser = argparse.ArgumentParser(
         fromfile_prefix_chars='@',
         description='Read a rerun directory to create "forced" summary table.')
-
+    schemaNameHelp = "DB schema name in which to load data. Of form \n"
+    schemaNameHelp += "[alphastuff]DDS[_morestuff] \n"
+    schemaNameHelp += "that is, optional alpha string, two digits for major and minor version, sim type indicator (i or p), more optional stuff which must begin with _"
     parser.add_argument('rerunDir', 
                         help="Rerun directory from which to read data")
-    parser.add_argument('schemaName', 
-                        help="DB schema name in which to load data")
+    parser.add_argument('schemaName', help = schemaNameHelp)
+    #                    help="DB schema name in which to load data of form ")
     parser.add_argument("--table-name", default="forced", 
                         help="Top-level table's name")
     parser.add_argument("--table-space", default="", 
