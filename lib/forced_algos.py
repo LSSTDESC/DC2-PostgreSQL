@@ -45,7 +45,7 @@ ref_algos = PoppingOrderedDict(
             "base_Blendedness",
             "ext_shapeHSM",
             "base_PixelFlags",
-            "modelfit_CModel",
+            #"modelfit_CModel",
             #"base_CircularApertureFlux",
             #"base_FootprintArea",
             #"base_GaussianCentroid",
@@ -73,6 +73,8 @@ ref_algos_ignored = [
     "base_InputCount_",
     "base_LocalBackground_",
     "base_NaiveCentroid_",
+    "base_Blendedness_raw_",
+    "modelfit_CModel_",
     # "base_PixelFlags_flag_",       # ignore all but ths summary flag base_PixelFlags
     # "base_SdssCentroid_",
     # "base_SdssShape_",
@@ -103,15 +105,15 @@ forced_algos = PoppingOrderedDict(
             #"base_CircularApertureFlux",
             "base_ClassificationExtendedness",  # only in ref for LSST run1.1
             #"base_GaussianFlux",
-            "base_InputCount",
-            "base_LocalBackground",
+            #"base_InputCount",
+            #"base_LocalBackground",
             "base_PixelFlags",
             "base_PsfFlux",
             "base_SdssCentroid",
             "base_SdssShape",
             #"base_TransformedCentroid",
             #"base_TransformedShape",
-            "base_Variance",
+            #"base_Variance",
             #"ext_convolved_ConvolvedFlux", #  in forced for 1.2; not 1.1
             #"ext_photometryKron_KronFlux", # not in LSST 1.1; is in 1.2
             "modelfit_CModel",
@@ -134,8 +136,12 @@ forced_algos_ignored = [
     #"coord",
     #"parent",
     #"deblend_nChild",
+    "base_Blendedness_raw_",    
+    "base_LocalBackground_",
+    "base_InputCount_",
     "base_TransformedCentroid_",
     "base_TransformedShape_",
+    "base_Variance_",
     "undeblended_ext_convolved_ConvolvedFlux_", # add for LSST 1.2
     "modelfit_GeneralShapeletPsfApprox_",       # added for LSST
     "base_GaussianFlux_",

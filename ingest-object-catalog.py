@@ -523,12 +523,15 @@ def get_ref_schema_from_file(path):
     # ignore the fields explicitly.
     def ignore(prefix):
         table.cutout_subtable(prefix)
+        #print("For ref ignoring prefix ", prefix)
 
     for name in lib.forced_algos.ref_algos_ignored:
         ignore(name)
 
     for field in table.fields:
         lib.misc.warning('Ignored field: ', field, 'in', path)
+
+    #sys.stdout.flush()
 
     dbtables = PoppingOrderedDict()
 
@@ -556,7 +559,8 @@ def get_ref_schema_from_file(path):
     add("dpdd_ref",
         ["base_SdssCentroid", "base_PsfFlux","base_ClassificationExtendedness",
          "base_Blendedness","base_PixelFlags", "ext_shapeHSM", 
-         "base_SdssShape", "modelfit_CModel", "deblend", ])
+         "base_SdssShape", "deblend", ])
+    #     "base_SdssShape", "modelfit_CModel", "deblend", ])
     # add("misc_ref",
     #     ["base_CircularApertureFlux",
     #      "base_FootprintArea",
@@ -738,6 +742,7 @@ def get_catalog_schema_from_file(path, object_id):
     # ignore the fields explicitly.
     def ignore(prefix):
         table.cutout_subtable(prefix)
+        #print("For multi ignoring prefix ", prefix)        
 
     for name in lib.forced_algos.forced_algos_ignored:
         ignore(name)
@@ -745,15 +750,17 @@ def get_catalog_schema_from_file(path, object_id):
     for field in table.fields:
         lib.misc.warning('Ignored field: ', field, 'in', path)
 
+    #sys.stdout.flush()
+
     dbtables = PoppingOrderedDict()
     def add(name, sourcenames, dbtable_class=lib.dbtable.DBTable):
         dbtables[name] = dbtable_class(name, algos.pop_many(sourcenames))
 
     add("dpdd_forced", [
         "base_PixelFlags",
-        "base_InputCount",
-        "base_Variance",
-        "base_LocalBackground",
+        #"base_InputCount",
+        #"base_Variance",
+        #"base_LocalBackground",
         "base_ClassificationExtendedness",    # not in lsst 1.1 data
         "modelfit_CModel",
         "base_SdssCentroid",

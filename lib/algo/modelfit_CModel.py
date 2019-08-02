@@ -60,3 +60,7 @@ class Algo_modelfit_CModel(algobase.Algo):
                                                     "CModel mag error", None)
         self.sourceTable = sourcetable.SourceTable(fields, sourceTable.slots,
                                                    sourceTable.fitsheader)
+        # Cut out stuff unused by dpdd
+        junk = self.sourceTable.cutout_subtable("modelfit_CModel_initial_")
+        junk = self.sourceTable.cutout_subtable("modelfit_CModel_exp_")
+        junk = self.sourceTable.cutout_subtable("modelfit_CModel_dev_")
