@@ -25,6 +25,8 @@ import re
 
 import psycopg2
 
+import numpy as np
+
 from . import config
 from . import libdb
 
@@ -195,3 +197,11 @@ absorptionCoeff = {
 }
 
 defaultPixelScale = 0.168
+defaultZeroPoint = 27.0
+
+def flux_to_mag(flux, zero_point=defaultZeroPoint):
+    return (zero_point - (2.5 * np.log10(flux)))
+
+def flux_to_magerr(flux, fluxerr):
+    return (  (2.5/np.log(10)) * (fluxerr / flux) )
+    

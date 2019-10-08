@@ -16,6 +16,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from .. import algobase
+from .. import sourcetable
+from .. import common
 
 import itertools
 
@@ -44,4 +46,21 @@ class Algo_modelfit_CModel(algobase.Algo):
     ]
 
     def __init__(self, sourceTable):
-        self.sourceTable = sourceTable.cutout_subtable("modelfit_CModel_")
+        #self.sourceTable = sourceTable.cutout_subtable("modelfit_CModel_")
+        temp_sourceTable = sourceTable.cutout_subtable("modelfit_CModel_")
+        fields = temp_sourceTable.fields
+        flux = fields["modelfit_CModel_instFlux"].data
+        fluxerr = fields["modelfit_CModel_instFluxErr"].data
+        mag = common.flux_to_mag(flux)
+        magerr = common.flux_to_magerr(flux,fluxerr)
+        fields["mag_cmodel"] = sourcetable.Field("mag_cmodel", "Scalar", "",
+                                                 mag, "CModel magnitude", None)
+        fields["magerr_cmodel"] = sourcetable.Field("magerr_cmodel", "Scalar",
+                                                    "", magerr, 
+                                                    "CModel mag error", None)
+        self.sourceTable = sourcetable.SourceTable(fields, sourceTable.slots,
+                                                   sourceTable.fitsheader)
+        # Cut out stuff unused by dpdd
+        junk = self.sourceTable.cutout_subtable("modelfit_CModel_initial_")
+        junk = self.sourceTable.cutout_subtable("modelfit_CModel_exp_")
+        junk = self.sourceTable.cutout_subtable("modelfit_CModel_dev_")

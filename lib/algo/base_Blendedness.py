@@ -54,3 +54,7 @@ class Algo_base_Blendedness(algobase.Algo):
 
     def __init__(self, sourceTable):
         self.sourceTable = sourceTable.cutout_subtable("base_Blendedness_")
+        # Eliminate stuff unused by dpdd
+        junk = self.sourceTable.cutout_subtable("base_Blendedness_raw")
+        junk = self.sourceTable.cutout_subtable("base_Blendedness_abs_")        
+        

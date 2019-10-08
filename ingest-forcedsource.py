@@ -211,7 +211,7 @@ def create_table(schema, finder, assumptions, dryrun=True):
     # Now check for view
     with db.cursor() as cursor:
         try:
-            cursor.execute('SELECT 0 FROM "{schema}"."forcedsource_dpdd" WHERE FALSE;'.format(**locals()))
+            cursor.execute('SELECT 0 FROM "{schema}"."forcedsource" WHERE FALSE;'.format(**locals()))
         except psycopg2.ProgrammingError:
             bNeedView = True
             db.rollback()

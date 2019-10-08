@@ -70,3 +70,9 @@ class Algo_ext_shapeHSM(algobase.Algo):
 
     def __init__(self, sourceTable):
         self.sourceTable = sourceTable.cutout_subtable("ext_shapeHSM_")
+
+        # Cut out stuff unused by dpdd
+        junk = self.sourceTable.cutout_subtable("ext_shapeHSM_HsmPsfMoments_")
+        junk = self.sourceTable.cutout_subtable("ext_shapeHSM_HsmShapeRegauss_")
+        junk = self.sourceTable.cutout_subtable("ext_shapeHSM_HsmSourceMomentsRound_")
+        

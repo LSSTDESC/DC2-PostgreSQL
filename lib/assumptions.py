@@ -21,7 +21,7 @@ from .misc import PoppingOrderedDict
 from .misc import warning
 from .sourcetable import Field
 from .dbimage import DbImage
-from .expressions import rpn_eval
+from .expressions import rpn_eval, rpn_eval_array
 import numpy as np
 
 class Assumptions(object):
@@ -162,7 +162,7 @@ class Assumptions(object):
 
 
         # If there are any entries left in column_dicts they better have
-        # the compute attribute
+        # the compute or compute_array attribute
         for d in column_dicts:
             if 'compute' in d:
                 c_list = d['compute']
@@ -173,21 +173,24 @@ class Assumptions(object):
                 s_val = rpn_eval([], cf_list)
                 print('computed value ', s_val)
                 val = s_val
-                if 'int' in d['dtype']: 
-                    val = int(s_val)
-                    #print('int val ', val)
-                if 'float' in d['dtype']: 
-                    val = int(s_val)
-                    #print('float val ', val)
-                dat = np.full([data_len], int(val), np.int64)
+                nptype = np.int64     # default
+                if d['dtype'] == 'int8' : nptype = np.int8
+                dat = np.full([data_len], int(val), nptype)
 
 
                 field = Field(d['name'], d['type'], None, dat, d['doc'], 
                               d['compute'])
                 fields[d['name']] = field
             else:
-                print("Field ", key, 
-                      ", known to Assumptions, not found in input")
+                if 'compute_array' in d:
+                    dat = rpn_eval_array(d['inputs'], d['compute_array'],
+                                         raw.fields)
+                    field = Field(d['name'], d['type'], None, dat, d['doc'],
+                                  None)
+                    fields[d['name']] = field
+                else:
+                    print("Field ", key, 
+                          ", known to Assumptions, not found in input")
 
 
         dbimage = DbImage(table_name, fields, schema_name)

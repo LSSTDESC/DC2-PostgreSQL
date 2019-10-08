@@ -1,0 +1,80 @@
+#  Structure of this file is
+#     a dict with two keys.
+#     key 'ignores' has value a list of strings.   Each is a regular expression
+#     key 'tables' has value a dict.   Each key is a table name. Value is
+#     the description of the table, itself a dict
+#
+#     Each table description may have three keys:
+#        'source'      Value is a string
+#        'columns'     Value is a list.   Each item in the list is a dict
+#                      describing either a column or a column group
+#                      All dicts have key column_type.
+#        'constraints' Value is a list.  Each item in the list is a dict.
+#                      All such dicts have a key 'constraint_type'
+ignores :
+-  'base_Circular.*'
+-  'base_Gaussian.*'
+-  'base_LocalBackground.*'
+-  'ext_photometry.*'
+-  'base_Transformed.*'
+-  'base_PsfFlux_apCorr.*'
+-  'base_PsfFlux_flag_apCorr.*'
+-  'base_PsfFlux_area.*'
+-  'parent'
+-  'parentObjectId' 
+-  'deblend_nChild'
+-  'coord_ra' 
+-  'coord_dec'
+-  'base_SdssCentroid.*'
+-  'base_SdssShape.*'
+-  'id'
+
+tables :
+    forcedsourcenative :
+      source : forced
+      columns : 
+        - column_type : column
+          name : objectId
+        - column_type : column
+          name : ccdVisitId  # RRSSVVVVVVVV where R,S,V <--> raft,sensor,visit
+          type : Scalar     # needed only for computed columns
+          dtype:  int64     # needed only for computed columns
+          compute : ['{visit}', 8, 'zerofill(,)', '{sensor}', 2, 'zerofill(,)', 
+                     'prepend(,)', '{raft}', 1, 'zerofill(,)', 'prepend(,)']
+          doc : 'Identifies visit, ccd for associated data'
+        - column_type : column_group
+          name_re : 'base_PsfFlux_inst.*'
+        - column_type : column_group
+          name_re : 'base_PsfFlux_flag.*'
+        - column_type : column_group 
+          name_re : 'base_PixelFlags_flag.*'
+        - column_type : column
+          name : forcedsourcevisit_good
+          type : Scalar
+          dtype : int8
+          inputs :  
+            ['base_PixelFlags_flag_edge', 
+            'base_PixelFlags_flag_interpolatedCenter', 
+            'base_PixelFlags_flag_saturatedCenter', 
+            'base_PixelFlags_flag_crCenter', 
+            'base_PixelFlags_flag_bad', 
+            'base_PixelFlags_flag_suspectCenter']
+          compute_array : 
+            ['x1', 'x2', 'or', 'x3', 'or', 'x4', 'or', 
+            'x5', 'or', 'x6', 'or', 'not']
+          doc : 'Analog of "good" for forced source: not(or of pixel flags)'
+      constraints :
+        - constraint_type : fk
+          column : ccdVisitId
+          ref_table : ccdvisit
+          ref_column: ccdVisitId
+        - constraint_type : fk
+          column : objectId
+          ref_table : position  # or should it be dpdd ?
+          ref_column : object_id
+        - constraint_type : index
+          property : primary
+          columns : [objectid, ccdVisitId]
+          # Also allow property to have value 'unique', and allow creation
+          # of indexes which are neither primary nor unique
+          # And support key 'where' containing a WHERE clause

@@ -16,6 +16,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from .. import algobase
+from .. import sourcetable
+from .. import common
 
 
 class Algo_base_PsfFlux(algobase.Algo):
@@ -36,4 +38,17 @@ class Algo_base_PsfFlux(algobase.Algo):
     ]
 
     def __init__(self, sourceTable):
-        self.sourceTable = sourceTable.cutout_subtable("base_PsfFlux_")
+        #self.sourceTable = sourceTable.cutout_subtable("base_PsfFlux_")
+
+        temp_sourceTable = sourceTable.cutout_subtable("base_PsfFlux_")
+        fields = temp_sourceTable.fields
+        flux = fields["base_PsfFlux_instFlux"].data
+        fluxerr = fields["base_PsfFlux_instFluxErr"].data
+        mag = common.flux_to_mag(flux)
+        magerr = common.flux_to_magerr(flux, fluxerr)
+        fields["mag"] = sourcetable.Field("mag", "Scalar", "", mag,
+                                          "Computed magnitude", None)
+        fields["magerr"] = sourcetable.Field("magerr", "Scalar", "", magerr,
+                                          "Computed magnitude error", None)
+        self.sourceTable = sourcetable.SourceTable(fields, sourceTable.slots,
+                                                   sourceTable.fitsheader)

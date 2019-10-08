@@ -53,11 +53,13 @@ def main():
     parser = argparse.ArgumentParser(
         fromfile_prefix_chars='@',
         description='Read a rerun directory to create "forced" summary table.')
-
+    schemaNameHelp = "DB schema name in which to load data. Of form \n"
+    schemaNameHelp += "[alphastuff]DDS[_morestuff] \n"
+    schemaNameHelp += "that is, optional alpha string, two digits for major and minor version, sim type indicator (i or p), more optional stuff which must begin with _"
     parser.add_argument('rerunDir', 
                         help="Rerun directory from which to read data")
-    parser.add_argument('schemaName', 
-                        help="DB schema name in which to load data")
+    parser.add_argument('schemaName', help = schemaNameHelp)
+    #                    help="DB schema name in which to load data of form ")
     parser.add_argument("--table-name", default="forced", 
                         help="Top-level table's name")
     parser.add_argument("--table-space", default="", 
@@ -521,12 +523,15 @@ def get_ref_schema_from_file(path):
     # ignore the fields explicitly.
     def ignore(prefix):
         table.cutout_subtable(prefix)
+        #print("For ref ignoring prefix ", prefix)
 
     for name in lib.forced_algos.ref_algos_ignored:
         ignore(name)
 
     for field in table.fields:
         lib.misc.warning('Ignored field: ', field, 'in', path)
+
+    #sys.stdout.flush()
 
     dbtables = PoppingOrderedDict()
 
@@ -539,8 +544,9 @@ def get_ref_schema_from_file(path):
     #   New table names:
     #       position (= old _forced:position)
     #       dpdd_ref (remaining quantitites from ref used in dpdd)
-    #       misc_ref  (everything else in ref)
     #       dpdd_forced (multiband quantities in dpdd)
+    # everything else will be ignored.  Was in tables
+    #       misc_ref  (everything else in ref)    
     #       forced2
     #       forced3
     #       forced4
@@ -553,21 +559,22 @@ def get_ref_schema_from_file(path):
     add("dpdd_ref",
         ["base_SdssCentroid", "base_PsfFlux","base_ClassificationExtendedness",
          "base_Blendedness","base_PixelFlags", "ext_shapeHSM", 
-         "base_SdssShape", "modelfit_CModel", "deblend", ])
-    add("misc_ref",
-        ["base_CircularApertureFlux",
-         "base_FootprintArea",
-         "base_GaussianCentroid",
-         "base_GaussianFlux",
-         "base_InputCount",
-         "base_LocalBackground",
-         "base_NaiveCentroid",
-         "base_Variance",
-         "calib",
-         "ext_convolved_ConvolvedFlux",
-         "ext_photometryKron_KronFlux",
-         "footprint",
-         "modelfit_DoubleShapeletPsfApprox",])
+         "base_SdssShape", "deblend", ])
+    #     "base_SdssShape", "modelfit_CModel", "deblend", ])
+    # add("misc_ref",
+    #     ["base_CircularApertureFlux",
+    #      "base_FootprintArea",
+    #      "base_GaussianCentroid",
+    #      "base_GaussianFlux",
+    #      "base_InputCount",
+    #      "base_LocalBackground",
+    #      "base_NaiveCentroid",
+    #      "base_Variance",
+    #      "calib",
+    #      "ext_convolved_ConvolvedFlux",
+    #      "ext_photometryKron_KronFlux",
+    #      "footprint",
+    #      "modelfit_DoubleShapeletPsfApprox",])
 
     if algos:
         print("remaining algos:")
@@ -735,6 +742,7 @@ def get_catalog_schema_from_file(path, object_id):
     # ignore the fields explicitly.
     def ignore(prefix):
         table.cutout_subtable(prefix)
+        #print("For multi ignoring prefix ", prefix)        
 
     for name in lib.forced_algos.forced_algos_ignored:
         ignore(name)
@@ -742,15 +750,17 @@ def get_catalog_schema_from_file(path, object_id):
     for field in table.fields:
         lib.misc.warning('Ignored field: ', field, 'in', path)
 
+    #sys.stdout.flush()
+
     dbtables = PoppingOrderedDict()
     def add(name, sourcenames, dbtable_class=lib.dbtable.DBTable):
         dbtables[name] = dbtable_class(name, algos.pop_many(sourcenames))
 
     add("dpdd_forced", [
         "base_PixelFlags",
-        "base_InputCount",
-        "base_Variance",
-        "base_LocalBackground",
+        #"base_InputCount",
+        #"base_Variance",
+        #"base_LocalBackground",
         "base_ClassificationExtendedness",    # not in lsst 1.1 data
         "modelfit_CModel",
         "base_SdssCentroid",
@@ -758,31 +768,32 @@ def get_catalog_schema_from_file(path, object_id):
         "base_PsfFlux",
     ])
 
-    add("forced2", [
-        "base_GaussianFlux",
-        "ext_photometryKron_KronFlux",   # not in lsst 1.1 data
-        "modelfit_DoubleShapeletPsfApprox",   # not in lsst 1.1 data
-        "undeblended_base_PsfFlux",
-        "undeblended_ext_photometryKron_KronFlux",  # not in lsst 1.1 data
-    ])
+    #  No longer keep stuff unrelated to dpdd
+    # add("forced2", [
+    #     "base_GaussianFlux",
+    #     "ext_photometryKron_KronFlux",   # not in lsst 1.1 data
+    #     "modelfit_DoubleShapeletPsfApprox",   # not in lsst 1.1 data
+    #     "undeblended_base_PsfFlux",
+    #     "undeblended_ext_photometryKron_KronFlux",  # not in lsst 1.1 data
+    # ])
 
-    add("forced3", [
-        "base_CircularApertureFlux",
-        "undeblended_base_CircularApertureFlux",   # not in lsst 1.1 data
-        "base_TransformedCentroid",
-        "base_TransformedShape",
-        "multi_coord",
-    ])
+    # add("forced3", [
+    #     "base_CircularApertureFlux",
+    #     "undeblended_base_CircularApertureFlux",   # not in lsst 1.1 data
+    #     "base_TransformedCentroid",
+    #     "base_TransformedShape",
+    #     "multi_coord",
+    # ])
 
     # Put this back in for Run1.2
     # NOTE:  This code will no longer work for 1.1
-    add("forced4", [
-        "ext_convolved_ConvolvedFlux",
-    ])
+    # add("forced4", [
+    #     "ext_convolved_ConvolvedFlux",
+    # ])
 
-    add("forced5", [
-        "undeblended_ext_convolved_ConvolvedFlux",
-    ])
+    # add("forced5", [
+    #     "undeblended_ext_convolved_ConvolvedFlux",
+    # ])
 
     if algos:
         print("remaining algos:")
@@ -966,9 +977,11 @@ def extract_schema_fields(schemaName):
     if schemaName is None: 
         return(None, None, None)
 
-    pat = '\A[-_a-zA-Z]+([0-9])([0-9]+)(i|p)(_[a-z]+[a-z,0-9]*)?\Z'
+    pat = '\A[-_a-zA-Z]+([0-9])([0-9]+)(i|p)(_[a-z]+[\-_a-z0-9]*)?\Z'
     result = re.match(pat, schemaName)
     if result:
+        #print("Groups 1,2,3: ", result.group(1), result.group(2), result.group(3))
+        #sys.stdout.flush()
         return(result.group(1), result.group(2), result.group(3))
     else:
         return(None, None, None)
