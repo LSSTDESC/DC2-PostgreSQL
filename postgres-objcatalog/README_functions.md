@@ -8,21 +8,30 @@ spatial search using ra and dec.
 encoded to include tract and patch information.  There is no guarantee this
 will always be the case.
 
-*   ```tract_from_object_id(object_id)
-    returns: tract number, e.g. 4023 ```
+```tract_from_object_id(object_id)
+   returns: tract number, e.g. 4023
+```
 
-*  ``` patch_from_object_id(object_id)
-   returns: 100*patch_x + patch_y, e.g. 203 ```
+```
+   patch_from_object_id(object_id)
+   returns: 100*patch_x + patch_y, e.g. 203
+```
 
-*  ```patch_s_from_object_id(object_id)
-   returns:  patch as string of the form 'x,y'  e.g., '2,3' ```
+```
+   patch_s_from_object_id(object_id)
+   returns:  patch as string of the form 'x,y'  e.g., '2,3'
+```
 
-*   ```tractSearch(object_id, tract)
-    returns: True if object_id is in the tract, else False ```
+```
+tractSearch(object_id, tract)
+returns: True if object_id is in the tract, else False
+```
 
-*   ```tractSearch(object_id, tractStart, tractEnd)
-    returns: True if object_id is in any tract numerically between tractStart
-    and tractEnd, inclusive; else False ```
+```
+tractSearch(object_id, tractStart, tractEnd)
+returns: True if object_id is in any tract numerically between tractStart
+and tractEnd, inclusive; else False
+```
 
 ## Spatial search
 These functions make use of a special datatype, `earth`. It's implemented
@@ -38,7 +47,6 @@ the other representation.
    returns: declination
 ```
 
-
 ```
    coord_to_ra(coord)
    returns: right ascension
@@ -47,13 +55,12 @@ the other representation.
 ```
    radec_to_coord(ra, dec)
    returns: cordinates of type **earth**
-   
 ```
 
 ```
    coneSearch(coord, ra, dec, radius)
-   returns: True if coord is in the cone about (**ra**, **dec**)
-   of radius **radius** (in arcseconds) ; else False
+   returns: True if coord is in the cone about (ra, dec)
+   of specified radius (in arcseconds) ; else False
 ```
 
 ```
