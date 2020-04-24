@@ -23,14 +23,14 @@ will always be the case.
 ```
 
 ```
-tractSearch(object_id, tract)
-returns: True if object_id is in the tract, else False
+   tractSearch(object_id, tract)
+   returns: True if object_id is in the tract, else False
 ```
 
 ```
-tractSearch(object_id, tractStart, tractEnd)
-returns: True if object_id is in any tract numerically between tractStart
-and tractEnd, inclusive; else False
+   tractSearch(object_id, tractStart, tractEnd)
+   returns: True if object_id is in any tract numerically between tractStart
+   and tractEnd, inclusive; else False
 ```
 
 ## Spatial search
