@@ -33,32 +33,29 @@ implemented in Postgres with an indexed column of type `earth`.  For
 and forth between (ra, dec) and coord and functions to search, using one or
 the other representation.
 
-*
 ```
    coord_to_dec(coord)
    returns: declination
 ```
 
-*
+
 ```
    coord_to_ra(coord)
    returns: right ascension
 ```
-*
+
 ```
    radec_to_coord(ra, dec)
    returns: cordinates of type **earth**
    
 ```
 
-*
 ```
    coneSearch(coord, ra, dec, radius)
    returns: True if coord is in the cone about (**ra**, **dec**)
    of radius **radius** (in arcseconds) ; else False
 ```
 
-*
 ```
    boxSearch(coord, ra1, ra2, dec1, dec2)
    returns: true if coord is in the area on the sphere delimited by
