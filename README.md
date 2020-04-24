@@ -1,21 +1,16 @@
-db-meas-forced
-=====================
-
-This is a collection of scripts to load HSC catalogs onto PostgreSQL.
+# Ingesting data
+db-meas-forced is a collection of scripts to load HSC catalogs onto PostgreSQL.
 
 This version has been adapted as needed for use with LSST from the
 original written by Sogo Mineo for HSC
 
-Requirements
-----------------------
-
+## Installation
+### Requirements
  * python >= 3.6
- * PostgreSQL >= 10
+ * PostgreSQL >= 9.6
  * hscPipe 6.x
 
-Prepare
-----------------------
-
+### Preparation
  1. Download [extinction module](https://hsc-gitlab.mtk.nao.ac.jp/sogo.mineo/extinction)
     and set `PYTHONPATH=/path/to/extinction/python` .
 
@@ -34,13 +29,11 @@ Prepare
  7. Execute `generate-tract-graph.py` to create `tractGraph.pickle` .
     This file is required in creating field search functions.
 
-Load catalogs
-----------------------
+## Load catalogs
 
 Execute `create-table-forced.py` , and `create-table-meas.py` .
 
-Create indices
------------------------------
+## Create indices
 
 Execute `create-table-forced.py` , and `create-table-meas.py`
 with `--create-index` option.
@@ -52,14 +45,16 @@ Though it is still possible to do an incremental load after creating indices,
 `create-table-*.py` will drop all indices before start loading since indices
 are hindrance to row insertion.
 
-Create field search functions
-------------------------------------
+## Create field search functions  (optional)
 
 Execute `generate-field-searches.py` . The generated search functions
 will be output to stdout, which must be piped to `psql`.
 
-Technical notes
---------------------
+**NOTE:** This facility was customized for HSC and never fully adapted for
+LSST. If it were adapted, the resulting search functions would have to be
+installed by a dbadmin.
+
+## Technical notes
 
   * PostgreSQL's planner can expand function calls in line,
     if no hindrance exists. For instance, 'STRICT' modifier
