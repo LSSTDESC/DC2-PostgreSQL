@@ -8,7 +8,8 @@ spatial search using ra and dec.
 encoded to include tract and patch information.  There is no guarantee this
 will always be the case.
 
-```tract_from_object_id(object_id)
+```
+   tract_from_object_id(object_id)
    returns: tract number, e.g. 4023
 ```
 
